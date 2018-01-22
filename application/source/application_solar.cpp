@@ -29,29 +29,13 @@ ApplicationSolar::ApplicationSolar(std::string const& resource_path)
 
 void ApplicationSolar::render() const {
     
+    
     // Dark blue background
     glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
     
-    int i  = 0;
-    glm::fmat4 model_matrix = glm::translate(glm::fmat4{}, spheres[i].position);
-//    model_matrix = glm::scale(model_matrix, glm::fvec3{spheres[i].radius});
     
-    glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("ModelMatrix"),
-                       1, GL_FALSE, glm::value_ptr(model_matrix));
-    
-    // extra matrix for normal transformation to keep them orthogonal to surface
-    glm::fmat4 normal_matrix = glm::inverseTranspose(glm::inverse(m_view_transform) * model_matrix);
-    glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("NormalMatrix"),
-                       1, GL_FALSE, glm::value_ptr(normal_matrix));
-    
-    // bind the VAO to draw
-    glBindVertexArray(sphere_object.vertex_AO);
-    
-    // draw bound vertex array using bound shader
-    glDrawElements(sphere_object.draw_mode, sphere_object.num_elements, model::INDEX.type, NULL);
-    
-//    uploadSpheres(false);
-//    uploadAllBoxes(false);
+    uploadSpheres(false);
+    uploadAllBoxes(false);
 }
 
 
@@ -69,12 +53,19 @@ void ApplicationSolar::uploadBox(box boxToUpload, bool shadows) const{
                        1, GL_FALSE, glm::value_ptr(model_matrix));
     
     // extra matrix for normal transformation to keep them orthogonal to surface
-//    glm::fmat4 normal_matrix = glm::inverseTranspose(glm::inverse(m_view_transform) * model_matrix);
-//    glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("NormalMatrix"),
-//                       1, GL_FALSE, glm::value_ptr(normal_matrix));
-//
+    glm::fmat4 normal_matrix = glm::inverseTranspose(glm::inverse(m_view_transform) * model_matrix);
+    glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("NormalMatrix"),
+                       1, GL_FALSE, glm::value_ptr(normal_matrix));
+
     //upload colour
     glUniform3fv(m_shaders.at("sphere").u_locs.at("DiffuseColour"), 1, glm::value_ptr(boxToUpload.colour));
+    
+    //this is to make the sun 'shine' - upload origin with 0.0 as w co-ord
+    glm::fmat4 view_matrix = glm::inverse(m_view_transform);
+    //multiply by view matrx, cast to vec3
+    glm::vec3 lightPos_v(view_matrix * glm::vec4(lightPosition, 1.0));
+    //upload vec3 to planet shader
+    glUniform3fv(m_shaders.at("sphere").u_locs.at("LightPosition"), 1, glm::value_ptr(lightPos_v));
     
     // bind the VAO to draw
     glBindVertexArray(box_object.vertex_AO);
@@ -85,7 +76,7 @@ void ApplicationSolar::uploadBox(box boxToUpload, bool shadows) const{
 
 void ApplicationSolar::uploadSpheres(bool shadows) const{
     
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < NUM_SPHERES; i++) {
         
         glm::fmat4 model_matrix = glm::translate(glm::fmat4{}, spheres[i].position);
         model_matrix = glm::scale(model_matrix, glm::fvec3{spheres[i].radius});
@@ -97,6 +88,13 @@ void ApplicationSolar::uploadSpheres(bool shadows) const{
         glm::fmat4 normal_matrix = glm::inverseTranspose(glm::inverse(m_view_transform) * model_matrix);
         glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("NormalMatrix"),
                            1, GL_FALSE, glm::value_ptr(normal_matrix));
+        
+        glUniform3fv(m_shaders.at("sphere").u_locs.at("DiffuseColour"), 1, glm::value_ptr(spheres[i].colour));
+
+        
+        glm::fmat4 view_matrix = glm::inverse(m_view_transform);
+        glm::vec3 lightPos(view_matrix * glm::vec4{lightPosition, 1.0});
+        glUniform3fv(m_shaders.at("sphere").u_locs.at("LightPosition"), 1, glm::value_ptr(lightPos));
         
         // bind the VAO to draw
         glBindVertexArray(sphere_object.vertex_AO);

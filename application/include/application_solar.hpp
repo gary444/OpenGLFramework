@@ -54,6 +54,9 @@ private:
     float zoom = 30;
     float slide = 0;
     
+    //light
+    glm::fvec3 lightPosition = {-5.0, 5.0, 0.0};
+
     //shapes
     //spheres============================================
     //colour, radius, position
