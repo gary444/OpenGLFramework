@@ -6,6 +6,9 @@
 // use gl definitions from glbinding 
 using namespace gl;
 
+
+#include <glm/gtc/type_ptr.hpp>
+
 // gpu representation of model
 struct model_object {
   // vertex array object
@@ -44,4 +47,18 @@ struct shader_program {
   // uniform locations mapped to name
   std::map<std::string, GLint> u_locs{};
 };
+
+struct sphere {
+    glm::fvec3 colour;
+    double radius;
+    glm::fvec3 position;
+};
+
+struct box {
+    
+    glm::fvec3 colour;
+    glm::fvec3 scaling;
+    glm::fvec3 position;
+};
+
 #endif
