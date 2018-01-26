@@ -11,23 +11,33 @@ uniform mat4 ModelMatrix;
 uniform mat4 ViewMatrix;
 uniform mat4 ProjectionMatrix;
 uniform mat4 NormalMatrix;
+uniform mat4 DepthBiasMVP;
+//uniform mat4 depthMVP;
+uniform mat4 MVP;
 
 uniform vec3 LightPosition;
 
 out vec3 pass_Normal;
 out vec3 pass_VertexViewPosition;
 out vec3 pass_LightSourceViewPosition;
+out vec4 pass_ShadowCoord;
 
 void main(void)
 {
     
     
     gl_Position = (ProjectionMatrix  * ViewMatrix * ModelMatrix) * vec4(in_Position, 1.0);
+//    gl_Position = MVP * vec4(in_Position, 1.0);
+
+    
     pass_Normal = (NormalMatrix * vec4(in_Normal, 0.0)).xyz;
     
     pass_VertexViewPosition = vec3((ViewMatrix * ModelMatrix) * vec4(in_Position, 1.0));
     
     pass_LightSourceViewPosition = LightPosition;
+    
+    
+    pass_ShadowCoord = DepthBiasMVP * vec4(in_Position,1);
     
     
 

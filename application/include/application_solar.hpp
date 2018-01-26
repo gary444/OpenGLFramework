@@ -35,16 +35,17 @@ class ApplicationSolar : public Application {
     // cpu representation of model
     model_object sphere_object;
     model_object box_object;
-//    model_object screenquad_object;
+    model_object screenquad_object;
     
 private:
     //drawing functions
     void uploadAllBoxes(bool shadows) const;
     void uploadBox(box boxToUpload, bool shadows) const;
     void uploadSpheres(bool shadows) const;
-//    void uploadQuad() const;
+    void uploadQuad() const;
     //shadow
-//    void setupShadowBuffer();
+    void setupShadowBuffer();
+    void setupTestTexture();
 //    void renderShadowBuffer();
     
     //mouse varialbe
@@ -54,9 +55,23 @@ private:
     float zoom = 30;
     float slide = 0;
     
+    //texture
+    GLuint quadTexture;
+    
     //light
     glm::fvec3 lightPosition = {-5.0, 5.0, 0.0};
-
+    float visBoxSize = 10;
+    
+    //shadow
+    GLuint fbo_handle;
+    GLuint depthTexture;
+    
+    glm::mat4 biasMatrix = {
+                         0.5, 0.0, 0.0, 0.0,
+                         0.0, 0.5, 0.0, 0.0,
+                         0.0, 0.0, 0.5, 0.0,
+                         0.5, 0.5, 0.5, 1.0};
+    
     //shapes
     //spheres============================================
     //colour, radius, position
@@ -93,7 +108,8 @@ private:
     //colour, scaling, position
     
     double cubeSize = 4.0;
-    box cube = {{0.541, 0.886, 0.917}, {cubeSize, cubeSize, cubeSize}, {-3.0, 0.0, 0.0}};
+    box tower1 = {{0.541, 0.886, 0.917}, {cubeSize / 4.0, cubeSize, cubeSize / 4.0}, {-3.0, 0.0, 0.0}};
+    box tower2 = {{0.541, 0.886, 0.917}, {cubeSize / 4.0, cubeSize, cubeSize / 4.0}, {3.0, 0.0, -1.0}};
     
     double tableLength = 18.0;
     double tableWidth = 9.0;
@@ -101,6 +117,12 @@ private:
     box plane = {{0.039, 0.424, 0.012},
         {tableLength, tableDepth, tableWidth},
         {-(tableLength / 2.0), -tableDepth, -(tableWidth / 2.0)}};
+    
+    //screen quad - shadow monitor
+    std::vector< float >  screenQuad = {-1.0, -1.0, 0.0,
+        1.0, -1.0, 0.0,
+        -1.0, 1.0, 0.0,
+        1.0, 1.0, 0.0};
 };
 
 #endif

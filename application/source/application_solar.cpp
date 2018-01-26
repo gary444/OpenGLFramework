@@ -4,6 +4,7 @@
 #include "utils.hpp"
 #include "shader_loader.hpp"
 #include "model_loader.hpp"
+#include "texture_loader.hpp"
 
 #include <glbinding/gl/gl.h>
 // use gl definitions from glbinding 
@@ -21,51 +22,151 @@ using namespace gl;
 
 ApplicationSolar::ApplicationSolar(std::string const& resource_path)
  :Application{resource_path}
-,sphere_object{}, box_object{}
+,sphere_object{}, box_object{}, screenquad_object{}
 {
   initializeGeometry();
   initializeShaderPrograms();
+    
+    setupShadowBuffer();
+    
+    setupTestTexture();
 }
+
+void ApplicationSolar::setupShadowBuffer(){
+    
+    fbo_handle = 0;
+    glGenFramebuffers(1, &fbo_handle);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo_handle);
+    
+    // Depth texture
+    glGenTextures(1, &depthTexture);
+    glBindTexture(GL_TEXTURE_2D, depthTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0,GL_DEPTH_COMPONENT16, 1024, 1024, 0,GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthTexture, 0);
+    
+    glDrawBuffer(GL_NONE); // No color buffer is drawn to.
+    
+    // Always check that our framebuffer is ok
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        throw std::logic_error("framebuffer not correctly initialised");
+    
+    //needed?
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void ApplicationSolar::setupTestTexture(){
+    
+    pixel_data newTexture = texture_loader::file(m_resource_path + "textures/goat.png");
+    
+    //get screen size
+    GLint viewportData[4];
+    glGetIntegerv(GL_VIEWPORT, viewportData);
+    
+    quadTexture = 3;
+    //switch active texture
+    glActiveTexture(GL_TEXTURE3);
+    //generate texture object
+    glGenTextures(1, &quadTexture);
+    //bind texture to 2D texture binding point of active unit
+    glBindTexture(GL_TEXTURE_2D, quadTexture);
+    
+    //define sampling parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    
+    //add empty texture image
+    
+    
+//    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, viewportData[2], viewportData[3], 0,
+//                 GL_RGB, GL_FLOAT, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, newTexture.width, newTexture.height, 0, newTexture.channels, newTexture.channel_type, newTexture.ptr());
+    
+
+    
+}
+
 
 void ApplicationSolar::render() const {
     
+    //1st pass - shadow map ========================================
+    glUseProgram(m_shaders.at("depth").handle);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo_handle);
+    uploadAllBoxes(true);
     
-    // Dark blue background
-    glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
+
     
     
-    uploadSpheres(false);
+    //2nd pass - render scene ========================================
+    glUseProgram(m_shaders.at("sphere").handle);
+    
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    
+    //set shadow map as texture
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, depthTexture);
+    glUniform1i(m_shaders.at("sphere").u_locs.at("ShadowMap"), 0);
+    
     uploadAllBoxes(false);
+    
+    uploadQuad();
 }
 
 
 void ApplicationSolar::uploadAllBoxes(bool shadows) const{
     
-    uploadBox(cube, false);
-    uploadBox(plane, false);
+    uploadBox(tower1, shadows);
+    uploadBox(tower2, shadows);
+    uploadBox(plane, shadows);
 }
 void ApplicationSolar::uploadBox(box boxToUpload, bool shadows) const{
     
     glm::fmat4 model_matrix = glm::translate(glm::fmat4{}, boxToUpload.position);
     model_matrix = glm::scale(model_matrix, boxToUpload.scaling);
     
-    glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("ModelMatrix"),
-                       1, GL_FALSE, glm::value_ptr(model_matrix));
-    
-    // extra matrix for normal transformation to keep them orthogonal to surface
-    glm::fmat4 normal_matrix = glm::inverseTranspose(glm::inverse(m_view_transform) * model_matrix);
-    glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("NormalMatrix"),
-                       1, GL_FALSE, glm::value_ptr(normal_matrix));
+    // Compute the MVP matrix from the light's point of view
+    glm::mat4 depthProjectionMatrix = glm::ortho<float>(-visBoxSize,visBoxSize,-visBoxSize,visBoxSize,-visBoxSize,visBoxSize);
+    glm::mat4 depthViewMatrix = glm::lookAt(lightPosition, glm::vec3(0,0,0), glm::vec3(0,1,0));
+    glm::mat4 depthMVP = depthProjectionMatrix * depthViewMatrix * model_matrix;
+    glm::mat4 depthBiasMVP = biasMatrix * depthMVP;
+    if (shadows) {
 
-    //upload colour
-    glUniform3fv(m_shaders.at("sphere").u_locs.at("DiffuseColour"), 1, glm::value_ptr(boxToUpload.colour));
+        //upload depth mvp to depth shader
+        glUniformMatrix4fv(m_shaders.at("depth").u_locs.at("DepthMVP"),
+                           1, GL_FALSE, &depthMVP[0][0]);
+    }
+    else {
+        
+        
+        //upload depth MVP with bias to main shader
+        glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("DepthBiasMVP"), 1, GL_FALSE, &depthBiasMVP[0][0]);
+        
+        glm::fmat4 view_matrix = glm::inverse(m_view_transform);
+        
+        glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("ModelMatrix"),
+                           1, GL_FALSE, glm::value_ptr(model_matrix));
+   
+        // extra matrix for normal transformation to keep them orthogonal to surface
+        glm::fmat4 normal_matrix = glm::inverseTranspose(glm::inverse(m_view_transform) * model_matrix);
+        glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("NormalMatrix"),
+                           1, GL_FALSE, glm::value_ptr(normal_matrix));
+        
+        //upload colour
+        glUniform3fv(m_shaders.at("sphere").u_locs.at("DiffuseColour"), 1, glm::value_ptr(boxToUpload.colour));
+        
+        //this is to make the sun 'shine' - upload origin with 0.0 as w co-ord
+        //    glm::fmat4 view_matrix = glm::inverse(m_view_transform);
+        //multiply by view matrx, cast to vec3
+        glm::vec3 lightPos_v(view_matrix * glm::vec4(lightPosition, 1.0));
+        //upload vec3 to planet shader
+        glUniform3fv(m_shaders.at("sphere").u_locs.at("LightPosition"), 1, glm::value_ptr(lightPos_v));
+    }
     
-    //this is to make the sun 'shine' - upload origin with 0.0 as w co-ord
-    glm::fmat4 view_matrix = glm::inverse(m_view_transform);
-    //multiply by view matrx, cast to vec3
-    glm::vec3 lightPos_v(view_matrix * glm::vec4(lightPosition, 1.0));
-    //upload vec3 to planet shader
-    glUniform3fv(m_shaders.at("sphere").u_locs.at("LightPosition"), 1, glm::value_ptr(lightPos_v));
+    
     
     // bind the VAO to draw
     glBindVertexArray(box_object.vertex_AO);
@@ -104,6 +205,18 @@ void ApplicationSolar::uploadSpheres(bool shadows) const{
     }
 }
 
+void ApplicationSolar::uploadQuad() const{
+    
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, quadTexture);
+    
+    glUseProgram(m_shaders.at("quad").handle);
+    glUniform1i(m_shaders.at("quad").u_locs.at("TexID"), 3);
+    
+    glBindVertexArray(screenquad_object.vertex_AO);
+    glDrawArrays(screenquad_object.draw_mode, 0, screenquad_object.num_elements);
+    
+}
 
 void ApplicationSolar::updateView() {
     
@@ -188,7 +301,19 @@ void ApplicationSolar::initializeShaderPrograms() {
   m_shaders.at("sphere").u_locs["ProjectionMatrix"] = -1;
     m_shaders.at("sphere").u_locs["LightPosition"] = -1;
     m_shaders.at("sphere").u_locs["DiffuseColour"] = -1;
+    m_shaders.at("sphere").u_locs["DepthBiasMVP"] = -1;
+    m_shaders.at("sphere").u_locs["ShadowMap"] = -1;
+//    m_shaders.at("sphere").u_locs["depthMVP"] = -1;
+//    m_shaders.at("sphere").u_locs["MVP"] = -1;
     
+    m_shaders.emplace("depth", shader_program{m_resource_path + "shaders/depth.vert",
+        m_resource_path + "shaders/depth.frag"});
+    m_shaders.at("depth").u_locs["DepthMVP"] = -1;
+    
+
+    m_shaders.emplace("quad", shader_program{m_resource_path + "shaders/quad.vert",
+        m_resource_path + "shaders/quad.frag"});
+    m_shaders.at("quad").u_locs["TexID"] = -1;
 }
 
 // load models
@@ -268,6 +393,34 @@ void ApplicationSolar::initializeGeometry() {
     box_object.draw_mode = GL_TRIANGLES;
     // transfer number of indices to model object
     box_object.num_elements = GLsizei(cube_model.indices.size());
+    
+    //======================================================================
+    //screen quad
+    model screenquad_model = {screenQuad, model::POSITION};
+
+    
+    // generate vertex array object
+    glGenVertexArrays(1, &screenquad_object.vertex_AO);
+    // bind the array for attaching buffers
+    glBindVertexArray(screenquad_object.vertex_AO);
+    
+    // generate generic buffer
+    glGenBuffers(1, &screenquad_object.vertex_BO);
+    // bind this as an vertex array buffer containing all attributes
+    glBindBuffer(GL_ARRAY_BUFFER, screenquad_object.vertex_BO);
+    // configure currently bound array buffer
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * screenquad_model.data.size(), screenquad_model.data.data(), GL_STATIC_DRAW);
+    
+    // activate first attribute on gpu
+    glEnableVertexAttribArray(0);
+    // first attribute is 3 floats with no offset & stride
+    glVertexAttribPointer(0, model::POSITION.components, model::POSITION.type, GL_FALSE, screenquad_model.vertex_bytes, screenquad_model.offsets[model::POSITION]);
+    
+    
+    // transfer number of indices to model object
+    screenquad_object.num_elements = GLsizei(screenquad_model.data.size());
+    screenquad_object.draw_mode = GL_TRIANGLE_STRIP;
+    
 }
 
 ApplicationSolar::~ApplicationSolar() {
