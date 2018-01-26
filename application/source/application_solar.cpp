@@ -93,6 +93,9 @@ void ApplicationSolar::setupTestTexture(){
 
 void ApplicationSolar::render() const {
     
+    
+    glViewport(0,0,1280,800);
+    
     //1st pass - shadow map ========================================
     glUseProgram(m_shaders.at("depth").handle);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_handle);
@@ -112,6 +115,9 @@ void ApplicationSolar::render() const {
     glUniform1i(m_shaders.at("sphere").u_locs.at("ShadowMap"), 0);
     
     uploadAllBoxes(false);
+    
+    
+    glViewport(0,0,300,300);
     
     uploadQuad();
 }
@@ -206,6 +212,7 @@ void ApplicationSolar::uploadSpheres(bool shadows) const{
 }
 
 void ApplicationSolar::uploadQuad() const{
+    
     
     glActiveTexture(GL_TEXTURE3);
     glBindTexture(GL_TEXTURE_2D, quadTexture);
