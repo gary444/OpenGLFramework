@@ -12,6 +12,9 @@ out vec4 out_Color;
 
 void main() {
         
-    out_Color = texture(TexID, pass_TexCoord);
+    vec4 Col = texture(TexID, pass_TexCoord);
+    
+    out_Color = vec4(Col);
+    
 //    out_Color = vec4(1,1,0,1);
 }

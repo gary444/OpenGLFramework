@@ -5,8 +5,8 @@
 layout(location = 0) in vec3 in_Position;
 
 // Values that stay constant for the whole mesh.
-uniform mat4 depthMVP;
+uniform mat4 DepthMVP;
 
 void main(){
-    gl_Position =  depthMVP * vec4(in_Position,1);
+    gl_Position =  DepthMVP * vec4(in_Position,1);
 }

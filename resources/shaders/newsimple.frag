@@ -28,18 +28,26 @@ void main() {
     
     float visibility = 1.0;
     
+    //from original demo
 //    float distFromLight = texture( ShadowMap, pass_ShadowCoord.xyz ).z;
-    float distFromLight = texture( ShadowMap, pass_ShadowCoord.xyz );
-
-
-
-    if (distFromLight < pass_ShadowCoord.z){
-        visibility = 0.3;
-    }
     
-//    if (distFromLight == 0.0){
-//        //TODO - apply me to out colour
-//        visibility = 0.5;
+    //my current version
+//    float distFromLight = texture( ShadowMap, pass_ShadowCoord.xyz );
+//    if (distFromLight < pass_ShadowCoord.z){
+//        visibility = 0.3;
+//    }
+    
+    //ncl demo
+    if(pass_ShadowCoord.w > 0.0) {
+        visibility = textureProj (ShadowMap,pass_ShadowCoord);
+    }
+
+    //from simple demo
+//    visibility = texture( ShadowMap, vec3(pass_ShadowCoord.xy, (pass_ShadowCoord.z)/pass_ShadowCoord.w));
+    
+    
+    
+//    if (pass_ShadowCoord.z == 1.0){//        //visibility = 0.5;
 //        out_Color = vec4(1, 0, 0, 1);
 //    }
 //    else {

@@ -30,29 +30,45 @@ ApplicationSolar::ApplicationSolar(std::string const& resource_path)
     setupShadowBuffer();
     
     setupTestTexture();
+    
+    // Enable depth test
+    glEnable(GL_DEPTH_TEST);
+    
+    // Accept fragment if it closer to the camera than the former one
+    glDepthFunc(GL_LESS);
+    
+    // Cull triangles which normal is not towards the camera
+    glEnable(GL_CULL_FACE);
 }
 
 void ApplicationSolar::setupShadowBuffer(){
     
-    fbo_handle = 0;
+//    fbo_handle = 0;
     glGenFramebuffers(1, &fbo_handle);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_handle);
     
     // Depth texture
-    glActiveTexture(GL_TEXTURE0);
+    //glActiveTexture(GL_TEXTURE0);
     glGenTextures(1, &depthTexture);
     glBindTexture(GL_TEXTURE_2D, depthTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0,GL_DEPTH_COMPONENT16, 1024, 1024, 0,GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+    
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    
+    glTexImage2D(GL_TEXTURE_2D, 0,GL_DEPTH_COMPONENT16, 1024, 1024, 0,GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+    
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
+    glBindTexture ( GL_TEXTURE_2D , 0);
     
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthTexture, 0);
+    
+//    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthTexture, 0);
+    glFramebufferTexture2D (GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthTexture, 0);
     
     glDrawBuffer(GL_NONE); // No color buffer is drawn to.
+//    glReadBuffer(GL_NONE);
     
     // Always check that our framebuffer is ok
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
@@ -97,19 +113,34 @@ void ApplicationSolar::setupTestTexture(){
 void ApplicationSolar::render() const {
     
     
-    glViewport(0,0,1280,800);
+    
+    
+    glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
     
     //1st pass - shadow map ========================================
-    glUseProgram(m_shaders.at("depth").handle);
+    glViewport(0,0,1024,1024);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_handle);
+    
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK); // Cull back-facing triangles -> draw only front-facing triangles
+    // Clear the screen
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glColorMask ( GL_FALSE , GL_FALSE , GL_FALSE , GL_FALSE );
+    glUseProgram(m_shaders.at("depth").handle);
     uploadAllBoxes(true);
     
-
-    
+    glColorMask ( GL_TRUE , GL_TRUE , GL_TRUE , GL_TRUE );
     
     //2nd pass - render scene ========================================
-    glUseProgram(m_shaders.at("sphere").handle);
+    glViewport(0,0,1280,800);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    // Clear the screen
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    
+    glUseProgram(m_shaders.at("sphere").handle);
     
     //set shadow map as texture
     glActiveTexture(GL_TEXTURE0);
@@ -309,8 +340,6 @@ void ApplicationSolar::initializeShaderPrograms() {
     m_shaders.at("sphere").u_locs["DiffuseColour"] = -1;
     m_shaders.at("sphere").u_locs["DepthBiasMVP"] = -1;
     m_shaders.at("sphere").u_locs["ShadowMap"] = -1;
-//    m_shaders.at("sphere").u_locs["depthMVP"] = -1;
-//    m_shaders.at("sphere").u_locs["MVP"] = -1;
     
     m_shaders.emplace("depth", shader_program{m_resource_path + "shaders/depth.vert",
         m_resource_path + "shaders/depth.frag"});
@@ -432,6 +461,7 @@ void ApplicationSolar::initializeGeometry() {
 ApplicationSolar::~ApplicationSolar() {
     
     glDeleteBuffers(1, &box_object.vertex_BO);
+    glDeleteBuffers(1, &box_object.element_BO);
     glDeleteVertexArrays(1, &box_object.vertex_AO);
     
     glDeleteFramebuffers(1, &fbo_handle);
@@ -442,6 +472,9 @@ ApplicationSolar::~ApplicationSolar() {
     
     glDeleteBuffers(1, &screenquad_object.vertex_BO);
     glDeleteVertexArrays(1, &screenquad_object.vertex_AO);
+    
+    glDeleteTextures(1, &quadTexture);
+    glDeleteTextures(1, &depthTexture);
 }
 
 // exe entry point
