@@ -39,6 +39,7 @@ void ApplicationSolar::setupShadowBuffer(){
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_handle);
     
     // Depth texture
+    glActiveTexture(GL_TEXTURE0);
     glGenTextures(1, &depthTexture);
     glBindTexture(GL_TEXTURE_2D, depthTexture);
     glTexImage2D(GL_TEXTURE_2D, 0,GL_DEPTH_COMPONENT16, 1024, 1024, 0,GL_DEPTH_COMPONENT, GL_FLOAT, 0);
@@ -46,6 +47,8 @@ void ApplicationSolar::setupShadowBuffer(){
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
     
     glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthTexture, 0);
     
@@ -106,7 +109,6 @@ void ApplicationSolar::render() const {
     
     //2nd pass - render scene ========================================
     glUseProgram(m_shaders.at("sphere").handle);
-    
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     
     //set shadow map as texture
@@ -213,12 +215,9 @@ void ApplicationSolar::uploadSpheres(bool shadows) const{
 
 void ApplicationSolar::uploadQuad() const{
     
-    
-    glActiveTexture(GL_TEXTURE3);
-    glBindTexture(GL_TEXTURE_2D, quadTexture);
-    
     glUseProgram(m_shaders.at("quad").handle);
-    glUniform1i(m_shaders.at("quad").u_locs.at("TexID"), 3);
+    //goat = 3
+    glUniform1i(m_shaders.at("quad").u_locs.at("TexID"), 0);
     
     glBindVertexArray(screenquad_object.vertex_AO);
     glDrawArrays(screenquad_object.draw_mode, 0, screenquad_object.num_elements);
@@ -432,13 +431,17 @@ void ApplicationSolar::initializeGeometry() {
 
 ApplicationSolar::~ApplicationSolar() {
     
-  glDeleteBuffers(1, &box_object.vertex_BO);
-  glDeleteVertexArrays(1, &box_object.vertex_AO);
+    glDeleteBuffers(1, &box_object.vertex_BO);
+    glDeleteVertexArrays(1, &box_object.vertex_AO);
     
-    
+    glDeleteFramebuffers(1, &fbo_handle);
+
     glDeleteBuffers(1, &sphere_object.vertex_BO);
     glDeleteBuffers(1, &sphere_object.element_BO);
     glDeleteVertexArrays(1, &sphere_object.vertex_AO);
+    
+    glDeleteBuffers(1, &screenquad_object.vertex_BO);
+    glDeleteVertexArrays(1, &screenquad_object.vertex_AO);
 }
 
 // exe entry point

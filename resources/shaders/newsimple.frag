@@ -30,11 +30,11 @@ void main() {
     
 //    float distFromLight = texture( ShadowMap, pass_ShadowCoord.xyz ).z;
     float distFromLight = texture( ShadowMap, pass_ShadowCoord.xyz );
-    
-    
-    
+
+
+
     if (distFromLight < pass_ShadowCoord.z){
-        visibility = 0.5;
+        visibility = 0.3;
     }
     
 //    if (distFromLight == 0.0){
