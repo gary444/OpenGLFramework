@@ -6,30 +6,47 @@ in vec3 pass_Normal;
 in vec3 pass_VertexViewPosition;
 in vec3 pass_LightSourceViewPosition;
 in vec4 pass_ShadowCoord;
+in vec2 pass_TexCoord;
 
 uniform vec3 DiffuseColour;
 uniform sampler2DShadow ShadowMap;
+uniform int useTexture;
+uniform sampler2D ColourTex;
+
+//MaterialProperties: {ambientK, diffuseK, specularK, glossiness}
+uniform vec4 MaterialProperties;
 
 
 out vec4 out_Color;
 
-float ambientK = 0.3;
-float diffuseK = 0.8;
-float specularK = 1.0;
-float glossiness = 50.0;
+float ambientK;
+float diffuseK;
+float specularK;
+float glossiness;
+
 vec3 specularColour = vec3(1.0, 1.0, 1.0);
 
 void main() {
     
+    //material properties
+    ambientK = MaterialProperties.x;
+    diffuseK = MaterialProperties.y;
+    specularK = MaterialProperties.z;
+    glossiness = MaterialProperties.w;
+    
+    //sample texture if needed
+    
     vec3 baseColor = DiffuseColour;
-    vec3 normal = normalize(pass_Normal);
+    if (useTexture == 1) {
+//        baseColor = vec3(texture(ColourTex, pass_TexCoord));
+//        out_Color = vec4(1,1,1,1);
+    }
+//    else {
+//        out_Color = vec4(DiffuseColour, 1.0);
+//    }
+    
     
     //shadow mapping========================================
-    
-    float visibility = 1.0;
-    
-    //from original demo
-//    float distFromLight = texture( ShadowMap, pass_ShadowCoord.xyz ).z;
     
     //my current version
 //    float bias = 0.1;
@@ -39,6 +56,7 @@ void main() {
 //    }
     
     //ncl demo
+    float visibility = 1.0;
     if(pass_ShadowCoord.w > 0.0) {
         visibility = textureProj (ShadowMap,pass_ShadowCoord);
     }
@@ -47,6 +65,8 @@ void main() {
     
 
     //end shadow mapping========================================
+    
+    vec3 normal = normalize(pass_Normal);
     
     //create vector for dorection of 'light' - from origin to vertex positions in view space
     vec3 lightDir = normalize(pass_LightSourceViewPosition - pass_VertexViewPosition);
@@ -70,8 +90,6 @@ void main() {
     vec3 specular = specularK * specularColour * specularIntensity;
     
     //combine specular, diffuse and ambient
-//    out_Color = vec4(ambient + diffuse + specular, 1.0);
     out_Color = vec4(ambient + diffuse * visibility + specular * visibility, 1.0);
-//    out_Color = vec4(baseColor, 1);
     
 }

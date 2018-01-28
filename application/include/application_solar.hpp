@@ -36,6 +36,7 @@ class ApplicationSolar : public Application {
     model_object sphere_object;
     model_object box_object;
     model_object screenquad_object;
+    model_object table_object;
     
 private:
     //drawing functions
@@ -43,9 +44,10 @@ private:
     void uploadBox(box boxToUpload, bool shadows) const;
     void uploadSpheres(bool shadows) const;
     void uploadQuad() const;
+    void uploadTable(bool shadows) const;
     //shadow
     void setupShadowBuffer();
-    void setupTestTexture();
+    void setupTextures();
 //    void renderShadowBuffer();
     
     //mouse varialbe
@@ -60,11 +62,12 @@ private:
     
     //light
     glm::fvec3 lightPosition = {0.0, 4.0, -4.0};
-    float visBoxSize = 20;
+    float visBoxSize = 10;
     
     //shadow
     GLuint fbo_handle;
     GLuint depthTexture;
+    bool showShadowMap = true;
     
     glm::mat4 biasMatrix = {
                          0.5, 0.0, 0.0, 0.0,
@@ -86,6 +89,9 @@ private:
     glm::vec3 yellow = {0.960, 0.886, 0};
     glm::vec3 red = {1.0, 0.0, 0.0};
     glm::vec3 black = {0.0, 0.0, 0.0};
+    
+    //material properties for balls
+    glm::fvec4 ball_MTL = {0.3, 0.8, 1.0, 50.0};
     
     
     //dependents
@@ -110,20 +116,39 @@ private:
     //boxes============================================
     //colour, scaling, position
     
-    //test shapes
-//    double towerSize = 4.0;
-//    box tower1 = {{0.541, 0.886, 0.917}, {towerSize / 4.0, towerSize, towerSize / 4.0}, {-3.0, 0.0, 0.0}};
-//    box tower2 = {{0.541, 0.886, 0.917}, {towerSize / 4.0, towerSize, towerSize / 4.0}, {3.0, 0.0, -1.0}};
-    
+    //chalk cube
     double cubeSize = 0.5;
     box chalkCube = {{0.541, 0.886, 0.917}, {cubeSize, cubeSize, cubeSize}, {-3.0, 0.0, 0.0}};
     
-    double tableLength = 18.0;
-    double tableWidth = 9.0;
-    double tableDepth = 0.2;
+    //green playing surface - felt
+    double planeLength = 16;
+    double planeWidth = 9.5;
+    double planeDepth = 0.2;
     box plane = {{0.039, 0.424, 0.012},
-        {tableLength, tableDepth, tableWidth},
-        {-(tableLength / 2.0), -tableDepth, -(tableWidth / 2.0)}};
+        {planeLength, planeDepth, planeWidth},
+        {-(planeLength / 2.0)-0.3, -planeDepth, -(planeWidth / 2.0)}};
+    //material properties for surface
+    glm::fvec4 plane_MTL = {0.3, 0.8, 0.1, 1.0};
+    
+    //extra plane to stop pockets being seethrough
+    box blockPlane = {{0.0, 0.0, 0.0},
+        {planeLength * 1.09, planeDepth, planeWidth * 1.12},
+        {-(planeLength / 2.0)-1, -planeDepth-0.1, -(planeWidth / 2.0)-0.5}};
+    glm::fvec4 block_MTL = {0.2, 0.0, 0.0, 1.0};
+    
+    //floor
+    double floorSize = 40.0;
+    box floorPlane = {{0.447, 0.133, 0.113}, {floorSize, 0.5, floorSize}, {-floorSize/2.0, -7.5, -floorSize/2.0}};
+    glm::fvec4 floor_MTL = {0.3, 0.8, 0.1, 1.0};
+    
+    //pool table obj rendering info
+    double tableScale = 0.008;
+    box poolTable = {{0.227, 0.133, 0.074}, {tableScale, tableScale, tableScale}, {-9.0, -7.5, 5.4}};
+    
+    
+    
+    
+    
     
     //screen quad - shadow monitor
     std::vector< float >  screenQuad = {-1.0, -1.0, 0.0,
