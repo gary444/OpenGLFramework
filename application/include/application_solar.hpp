@@ -59,8 +59,8 @@ private:
     GLuint quadTexture;
     
     //light
-    glm::fvec3 lightPosition = {-5.0, 5.0, 0.0};
-    float visBoxSize = 10;
+    glm::fvec3 lightPosition = {0.0, 4.0, -4.0};
+    float visBoxSize = 20;
     
     //shadow
     GLuint fbo_handle;
@@ -71,6 +71,9 @@ private:
                          0.0, 0.5, 0.0, 0.0,
                          0.0, 0.0, 0.5, 0.0,
                          0.5, 0.5, 0.5, 1.0};
+    
+    glm::mat4 depthProjectionMatrix;
+    glm::mat4 depthViewMatrix;
     
     //shapes
     //spheres============================================
@@ -107,9 +110,13 @@ private:
     //boxes============================================
     //colour, scaling, position
     
-    double cubeSize = 4.0;
-    box tower1 = {{0.541, 0.886, 0.917}, {cubeSize / 4.0, cubeSize, cubeSize / 4.0}, {-3.0, 0.0, 0.0}};
-    box tower2 = {{0.541, 0.886, 0.917}, {cubeSize / 4.0, cubeSize, cubeSize / 4.0}, {3.0, 0.0, -1.0}};
+    //test shapes
+//    double towerSize = 4.0;
+//    box tower1 = {{0.541, 0.886, 0.917}, {towerSize / 4.0, towerSize, towerSize / 4.0}, {-3.0, 0.0, 0.0}};
+//    box tower2 = {{0.541, 0.886, 0.917}, {towerSize / 4.0, towerSize, towerSize / 4.0}, {3.0, 0.0, -1.0}};
+    
+    double cubeSize = 0.5;
+    box chalkCube = {{0.541, 0.886, 0.917}, {cubeSize, cubeSize, cubeSize}, {-3.0, 0.0, 0.0}};
     
     double tableLength = 18.0;
     double tableWidth = 9.0;

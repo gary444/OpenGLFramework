@@ -32,8 +32,9 @@ void main() {
 //    float distFromLight = texture( ShadowMap, pass_ShadowCoord.xyz ).z;
     
     //my current version
+//    float bias = 0.1;
 //    float distFromLight = texture( ShadowMap, pass_ShadowCoord.xyz );
-//    if (distFromLight < pass_ShadowCoord.z){
+//    if (distFromLight < (pass_ShadowCoord.z)){
 //        visibility = 0.3;
 //    }
     
@@ -42,18 +43,7 @@ void main() {
         visibility = textureProj (ShadowMap,pass_ShadowCoord);
     }
 
-    //from simple demo
-//    visibility = texture( ShadowMap, vec3(pass_ShadowCoord.xy, (pass_ShadowCoord.z)/pass_ShadowCoord.w));
     
-    
-    
-//    if (pass_ShadowCoord.z == 1.0){//        //visibility = 0.5;
-//        out_Color = vec4(1, 0, 0, 1);
-//    }
-//    else {
-//
-//        out_Color = vec4(baseColor, 1);
-//    }
     
 
     //end shadow mapping========================================

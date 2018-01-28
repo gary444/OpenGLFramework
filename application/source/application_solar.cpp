@@ -39,6 +39,10 @@ ApplicationSolar::ApplicationSolar(std::string const& resource_path)
     
     // Cull triangles which normal is not towards the camera
     glEnable(GL_CULL_FACE);
+    
+    // Compute the MVP matrix from the light's point of view
+    depthProjectionMatrix = glm::ortho<float>(-visBoxSize,visBoxSize,-visBoxSize,visBoxSize,-visBoxSize,visBoxSize);
+    depthViewMatrix = glm::lookAt(lightPosition, glm::vec3(0,0,0), glm::vec3(0,1,0));
 }
 
 void ApplicationSolar::setupShadowBuffer(){
@@ -122,12 +126,13 @@ void ApplicationSolar::render() const {
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_handle);
     
     glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK); // Cull back-facing triangles -> draw only front-facing triangles
+    glCullFace(GL_FRONT);
     // Clear the screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glColorMask ( GL_FALSE , GL_FALSE , GL_FALSE , GL_FALSE );
     glUseProgram(m_shaders.at("depth").handle);
     uploadAllBoxes(true);
+    uploadSpheres(true);
     
     glColorMask ( GL_TRUE , GL_TRUE , GL_TRUE , GL_TRUE );
     
@@ -148,6 +153,7 @@ void ApplicationSolar::render() const {
     glUniform1i(m_shaders.at("sphere").u_locs.at("ShadowMap"), 0);
     
     uploadAllBoxes(false);
+    uploadSpheres(false);
     
     
     glViewport(0,0,300,300);
@@ -158,20 +164,20 @@ void ApplicationSolar::render() const {
 
 void ApplicationSolar::uploadAllBoxes(bool shadows) const{
     
-    uploadBox(tower1, shadows);
-    uploadBox(tower2, shadows);
+    uploadBox(chalkCube, shadows);
     uploadBox(plane, shadows);
 }
 void ApplicationSolar::uploadBox(box boxToUpload, bool shadows) const{
     
+    //compute model matrix for this shape
     glm::fmat4 model_matrix = glm::translate(glm::fmat4{}, boxToUpload.position);
     model_matrix = glm::scale(model_matrix, boxToUpload.scaling);
     
-    // Compute the MVP matrix from the light's point of view
-    glm::mat4 depthProjectionMatrix = glm::ortho<float>(-visBoxSize,visBoxSize,-visBoxSize,visBoxSize,-visBoxSize,visBoxSize);
-    glm::mat4 depthViewMatrix = glm::lookAt(lightPosition, glm::vec3(0,0,0), glm::vec3(0,1,0));
+    //compute transformation to position from light's POV
     glm::mat4 depthMVP = depthProjectionMatrix * depthViewMatrix * model_matrix;
     glm::mat4 depthBiasMVP = biasMatrix * depthMVP;
+    
+    //if shadow map rendering pass...
     if (shadows) {
 
         //upload depth mvp to depth shader
@@ -184,8 +190,7 @@ void ApplicationSolar::uploadBox(box boxToUpload, bool shadows) const{
         //upload depth MVP with bias to main shader
         glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("DepthBiasMVP"), 1, GL_FALSE, &depthBiasMVP[0][0]);
         
-        glm::fmat4 view_matrix = glm::inverse(m_view_transform);
-        
+        //upload model matrix to main shader
         glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("ModelMatrix"),
                            1, GL_FALSE, glm::value_ptr(model_matrix));
    
@@ -196,16 +201,12 @@ void ApplicationSolar::uploadBox(box boxToUpload, bool shadows) const{
         
         //upload colour
         glUniform3fv(m_shaders.at("sphere").u_locs.at("DiffuseColour"), 1, glm::value_ptr(boxToUpload.colour));
-        
-        //this is to make the sun 'shine' - upload origin with 0.0 as w co-ord
-        //    glm::fmat4 view_matrix = glm::inverse(m_view_transform);
-        //multiply by view matrx, cast to vec3
+
+        //upload light position for blinn-phong shading
+        glm::fmat4 view_matrix = glm::inverse(m_view_transform);
         glm::vec3 lightPos_v(view_matrix * glm::vec4(lightPosition, 1.0));
-        //upload vec3 to planet shader
         glUniform3fv(m_shaders.at("sphere").u_locs.at("LightPosition"), 1, glm::value_ptr(lightPos_v));
     }
-    
-    
     
     // bind the VAO to draw
     glBindVertexArray(box_object.vertex_AO);
@@ -221,20 +222,41 @@ void ApplicationSolar::uploadSpheres(bool shadows) const{
         glm::fmat4 model_matrix = glm::translate(glm::fmat4{}, spheres[i].position);
         model_matrix = glm::scale(model_matrix, glm::fvec3{spheres[i].radius});
         
-        glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("ModelMatrix"),
-                           1, GL_FALSE, glm::value_ptr(model_matrix));
+        //compute transformation to position from light's POV
+        glm::mat4 depthMVP = depthProjectionMatrix * depthViewMatrix * model_matrix;
+        glm::mat4 depthBiasMVP = biasMatrix * depthMVP;
         
-        // extra matrix for normal transformation to keep them orthogonal to surface
-        glm::fmat4 normal_matrix = glm::inverseTranspose(glm::inverse(m_view_transform) * model_matrix);
-        glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("NormalMatrix"),
-                           1, GL_FALSE, glm::value_ptr(normal_matrix));
+        //if shadow map rendering pass...
+        if (shadows) {
+            
+            //upload depth mvp to depth shader
+            glUniformMatrix4fv(m_shaders.at("depth").u_locs.at("DepthMVP"),
+                               1, GL_FALSE, &depthMVP[0][0]);
+        }
+        else {
+            
+            //upload depth MVP with bias to main shader
+            glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("DepthBiasMVP"), 1, GL_FALSE, &depthBiasMVP[0][0]);
         
-        glUniform3fv(m_shaders.at("sphere").u_locs.at("DiffuseColour"), 1, glm::value_ptr(spheres[i].colour));
-
+            //upload model matrix to main shader
+            glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("ModelMatrix"),
+                               1, GL_FALSE, glm::value_ptr(model_matrix));
+            
+            // extra matrix for normal transformation to keep them orthogonal to surface
+            glm::fmat4 normal_matrix = glm::inverseTranspose(glm::inverse(m_view_transform) * model_matrix);
+            glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("NormalMatrix"),
+                               1, GL_FALSE, glm::value_ptr(normal_matrix));
+            
+            //upload base colour
+            glUniform3fv(m_shaders.at("sphere").u_locs.at("DiffuseColour"), 1, glm::value_ptr(spheres[i].colour));
+            
+            
+            //upload light position for blinn-phong shading
+            glm::fmat4 view_matrix = glm::inverse(m_view_transform);
+            glm::vec3 lightPos(view_matrix * glm::vec4{lightPosition, 1.0});
+            glUniform3fv(m_shaders.at("sphere").u_locs.at("LightPosition"), 1, glm::value_ptr(lightPos));
         
-        glm::fmat4 view_matrix = glm::inverse(m_view_transform);
-        glm::vec3 lightPos(view_matrix * glm::vec4{lightPosition, 1.0});
-        glUniform3fv(m_shaders.at("sphere").u_locs.at("LightPosition"), 1, glm::value_ptr(lightPos));
+        }
         
         // bind the VAO to draw
         glBindVertexArray(sphere_object.vertex_AO);
