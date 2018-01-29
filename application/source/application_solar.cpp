@@ -56,12 +56,12 @@ void ApplicationSolar::setupShadowBuffer(){
     glGenTextures(1, &depthTexture);
     glBindTexture(GL_TEXTURE_2D, depthTexture);
     
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     
-    glTexImage2D(GL_TEXTURE_2D, 0,GL_DEPTH_COMPONENT16, 1024, 1024, 0,GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0,GL_DEPTH_COMPONENT24, 1024, 1024, 0,GL_DEPTH_COMPONENT, GL_FLOAT, 0);
     
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
@@ -196,10 +196,10 @@ void ApplicationSolar::uploadAllBoxes(bool shadows) const{
     
     
     uploadBox(chalkCube, shadows);
-    
+
     if (!shadows) {
         //upload material properties of block plane
-        glUniform4fv(m_shaders.at("sphere").u_locs.at("MaterialProperties"), 1, glm::value_ptr(plane_MTL));
+        glUniform4fv(m_shaders.at("sphere").u_locs.at("MaterialProperties"), 1, glm::value_ptr(block_MTL));
     }
     uploadBox(blockPlane, shadows);
    
@@ -292,15 +292,7 @@ void ApplicationSolar::uploadBox(box boxToUpload, bool shadows) const{
 }
 
 void ApplicationSolar::uploadSpheres(bool shadows) const{
-    
-    if (!shadows) {
-        //upload material properties of balls
-        glUniform4fv(m_shaders.at("sphere").u_locs.at("MaterialProperties"), 1, glm::value_ptr(ball_MTL));
-    }
-    
-    
    
-    
     for (int i = 0; i < NUM_SPHERES; i++) {
         
         glm::fmat4 model_matrix = glm::translate(glm::fmat4{}, spheres[i].position);
@@ -339,6 +331,10 @@ void ApplicationSolar::uploadSpheres(bool shadows) const{
             glm::fmat4 view_matrix = glm::inverse(m_view_transform);
             glm::vec3 lightPos(view_matrix * glm::vec4{lightPosition, 1.0});
             glUniform3fv(m_shaders.at("sphere").u_locs.at("LightPosition"), 1, glm::value_ptr(lightPos));
+            
+            //upload material properties of balls
+            glUniform4fv(m_shaders.at("sphere").u_locs.at("MaterialProperties"), 1, glm::value_ptr(ball_MTL));
+
         
         }
         
@@ -399,6 +395,9 @@ void ApplicationSolar::uploadTable(bool shadows) const{
         glm::fmat4 view_matrix = glm::inverse(m_view_transform);
         glm::vec3 lightPos(view_matrix * glm::vec4{lightPosition, 1.0});
         glUniform3fv(m_shaders.at("sphere").u_locs.at("LightPosition"), 1, glm::value_ptr(lightPos));
+        
+        //upload material properties of balls
+        glUniform4fv(m_shaders.at("sphere").u_locs.at("MaterialProperties"), 1, glm::value_ptr(table_MTL));
         
     }
     

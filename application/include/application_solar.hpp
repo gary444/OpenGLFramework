@@ -5,7 +5,7 @@
 #include "model.hpp"
 #include "structs.hpp"
 
-#define NUM_SPHERES 10
+#define NUM_SPHERES 16
 
 // gpu representation of model
 class ApplicationSolar : public Application {
@@ -86,15 +86,15 @@ private:
     //parameters
     double triangleSide = 2.0;
     double sphereSize = 0.25;
-    int rows = 4;
+    int rows = 5;
     double frontX = 3.4;
     glm::vec3 yellow = {0.960, 0.886, 0};
     glm::vec3 red = {1.0, 0.0, 0.0};
     glm::vec3 black = {0.0, 0.0, 0.0};
+    glm::vec3 white = {1.0, 1.0, 1.0};
     
     //material properties for balls
     glm::fvec4 ball_MTL = {0.3, 0.8, 1.0, 50.0};
-    
     
     //dependents
     double backX = frontX + (triangleSide * 0.866);//sin 60
@@ -104,23 +104,29 @@ private:
     double Zadjust = triangleSide / (double)(rows-1);
     
     sphere spheres[NUM_SPHERES] = {{yellow, sphereSize, {frontX, sphereSize, 0.0}},//1 row
-        {red, sphereSize, {frontX + XperRow, sphereSize, Zadjust/2.0}},// 2 row
-        {yellow, sphereSize, {frontX + XperRow, sphereSize, -Zadjust/2.0}},// 2 row
-        {yellow, sphereSize, {backX - XperRow, sphereSize, Zadjust}},//3 row L
-        {black, sphereSize, {backX - XperRow, sphereSize, 0.0}},//3 row
-        {red, sphereSize, {backX - XperRow, sphereSize, -Zadjust}},//3 row R
-        {red, sphereSize, {backX, sphereSize, leftZ}},//4 row L
-        {yellow, sphereSize, {backX, sphereSize, leftZ-Zadjust}},//4 row
-        {red, sphereSize, {backX, sphereSize, rightZ+Zadjust}},//4 row
-        {yellow, sphereSize, {backX, sphereSize, rightZ}}};//4 row R
+        {red, sphereSize, {frontX + XperRow, sphereSize, Zadjust/2.0}},// 2 rowL
+        {yellow, sphereSize, {frontX + XperRow, sphereSize, -Zadjust/2.0}},// 2 rowR
+        {yellow, sphereSize, {backX - (2*XperRow), sphereSize, Zadjust}},//3 row L
+        {black, sphereSize, {backX - (2*XperRow), sphereSize, 0.0}},//3 row
+        {red, sphereSize, {backX - (2*XperRow), sphereSize, -Zadjust}},//3 row R
+        {red, sphereSize, {backX - XperRow, sphereSize, Zadjust * 1.5}},//4 row L
+        {yellow, sphereSize, {backX - XperRow, sphereSize, Zadjust * 0.5}},//4 row CL
+        {red, sphereSize, {backX - XperRow, sphereSize, -Zadjust * 0.5}},//4 row CR
+        {yellow, sphereSize, {backX - XperRow, sphereSize, -Zadjust * 1.5}},//4 row R
+        {yellow, sphereSize, {backX, sphereSize, leftZ}},//5 row L
+        {red, sphereSize, {backX, sphereSize, leftZ-Zadjust}},//5 row CL
+        {yellow, sphereSize, {backX, sphereSize, 0.0}},//5 row C
+        {red, sphereSize, {backX, sphereSize, rightZ+Zadjust}},//5 row CR
+        {red, sphereSize, {backX, sphereSize, rightZ}},//5 row R
+        {white, sphereSize, {-backX*1.1, sphereSize, Zadjust}}};//CUE ball
     
     
     //boxes============================================
     //colour, scaling, position
     
     //chalk cube
-    double cubeSize = 0.5;
-    box chalkCube = {{0.541, 0.886, 0.917}, {cubeSize, cubeSize, cubeSize}, {-3.0, 0.0, 0.0}};
+    double cubeSize = 0.3;
+    box chalkCube = {{0.541, 0.886, 0.917}, {cubeSize, cubeSize, cubeSize}, {-3.0, 0.22, 5.0}};
     
     //green playing surface - felt
     double planeLength = 16;
@@ -146,6 +152,7 @@ private:
     //pool table obj rendering info
     double tableScale = 0.008;
     box poolTable = {{0.227, 0.133, 0.074}, {tableScale, tableScale, tableScale}, {-9.0, -7.5, 5.4}};
+    glm::fvec4 table_MTL = {0.3, 0.8, 1.0, 50.0};
     
     
     
