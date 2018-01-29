@@ -1,5 +1,4 @@
 #version 150
-//#version 330
 
 
 in vec3 pass_Normal;
@@ -8,16 +7,14 @@ in vec3 pass_LightSourceViewPosition;
 in vec4 pass_ShadowCoord;
 in vec2 pass_TexCoord;
 
-in float pass_test;
+//in float pass_test;
 
 uniform vec3 DiffuseColour;
 uniform sampler2DShadow ShadowMap;
 uniform int useTexture;
 uniform sampler2D ColourTex;
-
 //MaterialProperties: {ambientK, diffuseK, specularK, glossiness}
 uniform vec4 MaterialProperties;
-
 
 out vec4 out_Color;
 
@@ -28,6 +25,26 @@ float glossiness;
 
 vec3 specularColour = vec3(1.0, 1.0, 1.0);
 
+//PCF sampling setup ---------------------------------------
+//sun and black cat: http://www.sunandblackcat.com/tipFullView.php?l=eng&topicid=35
+const int numSamplingPositions = 4;
+// offsets for rectangular PCF sampling
+vec2 kernel[4] = vec2[]
+(
+ vec2(1.0, 1.0), vec2(-1.0, 1.0), vec2(-1.0, -1.0), vec2(1.0, -1.0)
+ );
+// performs sampling and accumulates shadowing factor
+void sample(in vec3 coords, in vec2 offset,
+            inout float factor, inout float numSamplesUsed)
+{
+    factor += texture(
+                      ShadowMap,
+                      vec3(coords.xy + offset, coords.z)
+                      );
+    numSamplesUsed += 1;
+}
+
+
 void main() {
     
     //material properties
@@ -37,19 +54,10 @@ void main() {
     glossiness = MaterialProperties.w;
     
     //sample texture if needed
-//    vec2 TEST_Coord = vec2(0.5, 0.5);
     vec3 baseColor = DiffuseColour;
     if (useTexture == 1.0) {
         baseColor = vec3(texture(ColourTex, pass_TexCoord));
-        
-//        if (pass_test > 0.5) {
-//            baseColor = vec3(1,0,0);
-//        }
-//        out_Color = vec4(1,1,1,1);
     }
-//    else {
-//        out_Color = vec4(DiffuseColour, 1.0);
-//    }
     
     
     //shadow mapping========================================
@@ -63,12 +71,26 @@ void main() {
     
     //ncl demo
     float visibility = 1.0;
-    if(pass_ShadowCoord.w > 0.0) {
-        visibility = textureProj (ShadowMap,pass_ShadowCoord);
-    }
+//    if(pass_ShadowCoord.w > 0.0) {
+//        visibility = textureProj (ShadowMap,pass_ShadowCoord);
+//    }
 
+    // sample each PCF texel around current fragment
+    float shadowFactor = 0.0;
+    float numSamplesUsed = 0.0;
+    float PCFRadius = 1.0;
+    float shadowMapStep = 1.0 / 1024.0;//1024 is resolution of depth texture
+    for(int i=0; i<numSamplingPositions; i++)
+    {
+        sample(vec3(pass_ShadowCoord),
+               kernel[i] * PCFRadius * shadowMapStep,
+               shadowFactor,
+               numSamplesUsed
+               );
+    }
     
-    
+    // normalize shadowing factor
+    visibility = shadowFactor/numSamplesUsed;
 
     //end shadow mapping========================================
     
