@@ -8,6 +8,8 @@ in vec3 pass_LightSourceViewPosition;
 in vec4 pass_ShadowCoord;
 in vec2 pass_TexCoord;
 
+in float pass_test;
+
 uniform vec3 DiffuseColour;
 uniform sampler2DShadow ShadowMap;
 uniform int useTexture;
@@ -35,10 +37,14 @@ void main() {
     glossiness = MaterialProperties.w;
     
     //sample texture if needed
-    
+//    vec2 TEST_Coord = vec2(0.5, 0.5);
     vec3 baseColor = DiffuseColour;
-    if (useTexture == 1) {
-//        baseColor = vec3(texture(ColourTex, pass_TexCoord));
+    if (useTexture == 1.0) {
+        baseColor = vec3(texture(ColourTex, pass_TexCoord));
+        
+//        if (pass_test > 0.5) {
+//            baseColor = vec3(1,0,0);
+//        }
 //        out_Color = vec4(1,1,1,1);
     }
 //    else {

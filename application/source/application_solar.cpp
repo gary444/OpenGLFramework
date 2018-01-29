@@ -83,10 +83,40 @@ void ApplicationSolar::setupTextures(){
     GLint viewportData[4];
     glGetIntegerv(GL_VIEWPORT, viewportData);
     
+    pixel_data newTexture;
+    
+    //felt texture --------------------------------------------
+    newTexture = texture_loader::file(m_resource_path + "textures/felt_blur.png");
+    feltTexture = 1;
+    glActiveTexture(GL_TEXTURE1);
+    //generate texture object
+    glGenTextures(1, &feltTexture);
+    //bind texture to 2D texture binding point of active unit
+    glBindTexture(GL_TEXTURE_2D, feltTexture);
+    //define sampling parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, newTexture.width, newTexture.height, 0, newTexture.channels, newTexture.channel_type, newTexture.ptr());
+    
+    
+    //floor texture --------------------------------------------
+    
+    newTexture = texture_loader::file(m_resource_path + "textures/floor.png");
+    floorTexture = 2;
+    glActiveTexture(GL_TEXTURE2);
+    //generate texture object
+    glGenTextures(1, &floorTexture);
+    //bind texture to 2D texture binding point of active unit
+    glBindTexture(GL_TEXTURE_2D, floorTexture);
+    //define sampling parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, newTexture.width, newTexture.height, 0, newTexture.channels, newTexture.channel_type, newTexture.ptr());
+    
     
     //test texture --------------------------------------------
     
-    pixel_data newTexture = texture_loader::file(m_resource_path + "textures/goat.png");
+    newTexture = texture_loader::file(m_resource_path + "textures/goat.png");
     quadTexture = 3;
     //switch active texture
     glActiveTexture(GL_TEXTURE3);
@@ -145,6 +175,7 @@ void ApplicationSolar::render() const {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, depthTexture);
     glUniform1i(m_shaders.at("sphere").u_locs.at("ShadowMap"), 0);
+    glUniform1i(m_shaders.at("sphere").u_locs.at("ColourTex"), 1);
     
     uploadTable(false);
     uploadAllBoxes(false);
@@ -176,10 +207,10 @@ void ApplicationSolar::uploadAllBoxes(bool shadows) const{
     //upload playing surface and floor-----------------
     if(!shadows){
         
-        //activate texture
-        glActiveTexture(GL_TEXTURE3);
-        glBindTexture(GL_TEXTURE_2D, quadTexture);
-        glUniform1i(m_shaders.at("sphere").u_locs.at("ColourTex"), 3);
+        //activate felt texture
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, feltTexture);
+        glUniform1i(m_shaders.at("sphere").u_locs.at("ColourTex"), 1);
         
         //enable textures
         glUniform1i(m_shaders.at("sphere").u_locs.at("useTexture"),1);
@@ -194,6 +225,11 @@ void ApplicationSolar::uploadAllBoxes(bool shadows) const{
         
         //upload material properties of floor
         glUniform4fv(m_shaders.at("sphere").u_locs.at("MaterialProperties"), 1, glm::value_ptr(floor_MTL));
+        
+        //activate floor texture
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, floorTexture);
+        glUniform1i(m_shaders.at("sphere").u_locs.at("ColourTex"), 2);
         
         //upload floor
         uploadBox(floorPlane, shadows);
@@ -519,7 +555,7 @@ void ApplicationSolar::initializeGeometry() {
     
     //boxes----------------------------------------------------
     
-    model cube_model = model_loader::obj(m_resource_path + "models/cube.obj", model::NORMAL | model::TEXCOORD);
+    model cube_model = model_loader::obj(m_resource_path + "models/cube.obj", model::NORMAL);
     
     // generate vertex array object
     glGenVertexArrays(1, &box_object.vertex_AO);
@@ -542,9 +578,9 @@ void ApplicationSolar::initializeGeometry() {
     // first attribute is 3 floats with no offset & stride
     glVertexAttribPointer(1, model::NORMAL.components, model::NORMAL.type, GL_FALSE, cube_model.vertex_bytes, cube_model.offsets[model::NORMAL]);
     
-    glEnableVertexAttribArray(2);
-    // first attribute is 3 floats with no offset & stride
-    glVertexAttribPointer(2, model::TEXCOORD.components, model::TEXCOORD.type, GL_FALSE, cube_model.vertex_bytes, cube_model.offsets[model::TEXCOORD]);
+//    glEnableVertexAttribArray(2);
+//    // first attribute is 3 floats with no offset & stride
+//    glVertexAttribPointer(2, model::TEXCOORD.components, model::TEXCOORD.type, GL_FALSE, cube_model.vertex_bytes, cube_model.offsets[model::TEXCOORD]);
     
     // generate generic buffer
     glGenBuffers(1, &box_object.element_BO);

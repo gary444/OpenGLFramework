@@ -57,8 +57,10 @@ private:
     float zoom = 30;
     float slide = 0;
     
-    //texture
+    //textures
     GLuint quadTexture;
+    GLuint feltTexture;
+    GLuint floorTexture;
     
     //light
     glm::fvec3 lightPosition = {0.0, 4.0, -4.0};
