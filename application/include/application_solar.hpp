@@ -37,6 +37,7 @@ class ApplicationSolar : public Application {
     model_object box_object;
     model_object screenquad_object;
     model_object table_object;
+    model_object cue_object;
     
 private:
     //drawing functions
@@ -45,6 +46,7 @@ private:
     void uploadSpheres(bool shadows) const;
     void uploadQuad() const;
     void uploadTable(bool shadows) const;
+    void uploadCues(bool shadows) const;
     //shadow
     void setupShadowBuffer();
     void setupTextures();
@@ -149,12 +151,14 @@ private:
     box floorPlane = {{0.447, 0.133, 0.113}, {floorSize, 0.5, floorSize}, {-floorSize/2.0, -7.5, -floorSize/2.0}};
     glm::fvec4 floor_MTL = {0.3, 0.8, 0.1, 1.0};
     
-    //pool table obj rendering info
+    //pool table obj rendering info================================
     double tableScale = 0.008;
     box poolTable = {{0.227, 0.133, 0.074}, {tableScale, tableScale, tableScale}, {-9.0, -7.5, 5.4}};
     glm::fvec4 table_MTL = {0.3, 0.8, 1.0, 50.0};
     
-    
+    //pool cue obj rendering info================================
+    double cueScale = 100.0;
+    box poolCues = {{0.227, 0.133, 0.074}, {tableScale, tableScale, tableScale}, {0.0, 7.5, 0.0}};
     
     
     

@@ -22,7 +22,7 @@ using namespace gl;
 
 ApplicationSolar::ApplicationSolar(std::string const& resource_path)
  :Application{resource_path}
-,sphere_object{}, box_object{}, screenquad_object{}, table_object{}
+,sphere_object{}, box_object{}, screenquad_object{}, table_object{}, cue_object{}
 {
   initializeGeometry();
   initializeShaderPrograms();
@@ -155,6 +155,7 @@ void ApplicationSolar::render() const {
     uploadTable(true);
     uploadAllBoxes(true);
     uploadSpheres(true);
+    uploadCues(true);
     
     glColorMask ( GL_TRUE , GL_TRUE , GL_TRUE , GL_TRUE );
     
@@ -180,6 +181,7 @@ void ApplicationSolar::render() const {
     uploadTable(false);
     uploadAllBoxes(false);
     uploadSpheres(false);
+    uploadCues(false);
     
     //show shadow map in bottom corner if desired
     if (showShadowMap) {
@@ -406,6 +408,58 @@ void ApplicationSolar::uploadTable(bool shadows) const{
     
     // draw bound vertex array using bound shader
     glDrawElements(table_object.draw_mode, table_object.num_elements, model::INDEX.type, NULL);
+}
+
+void ApplicationSolar::uploadCues(bool shadows) const{
+    
+    
+    //    glm::fmat4 model_matrix;
+    glm::fmat4 model_matrix = glm::translate(glm::fmat4{}, poolCues.position);
+    model_matrix = glm::scale(model_matrix, glm::fvec3{poolCues.scaling});
+    
+    //compute transformation to position from light's POV
+    glm::mat4 depthMVP = depthProjectionMatrix * depthViewMatrix * model_matrix;
+    glm::mat4 depthBiasMVP = biasMatrix * depthMVP;
+    
+    //if shadow map rendering pass...
+    if (shadows) {
+        
+        //upload depth mvp to depth shader
+        glUniformMatrix4fv(m_shaders.at("depth").u_locs.at("DepthMVP"),
+                           1, GL_FALSE, &depthMVP[0][0]);
+    }
+    else {
+        
+        //upload depth MVP with bias to main shader
+        glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("DepthBiasMVP"), 1, GL_FALSE, &depthBiasMVP[0][0]);
+        
+        //upload model matrix to main shader
+        glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("ModelMatrix"),
+                           1, GL_FALSE, glm::value_ptr(model_matrix));
+        
+        // extra matrix for normal transformation to keep them orthogonal to surface
+        glm::fmat4 normal_matrix = glm::inverseTranspose(glm::inverse(m_view_transform) * model_matrix);
+        glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("NormalMatrix"),
+                           1, GL_FALSE, glm::value_ptr(normal_matrix));
+        
+        //upload base colour
+        glUniform3fv(m_shaders.at("sphere").u_locs.at("DiffuseColour"), 1, glm::value_ptr(poolCues.colour));
+        
+        //upload light position for blinn-phong shading
+        glm::fmat4 view_matrix = glm::inverse(m_view_transform);
+        glm::vec3 lightPos(view_matrix * glm::vec4{lightPosition, 1.0});
+        glUniform3fv(m_shaders.at("sphere").u_locs.at("LightPosition"), 1, glm::value_ptr(lightPos));
+        
+        //upload material properties
+        glUniform4fv(m_shaders.at("sphere").u_locs.at("MaterialProperties"), 1, glm::value_ptr(table_MTL));
+        
+    }
+    
+    // bind the VAO to draw
+    glBindVertexArray(cue_object.vertex_AO);
+    
+    // draw bound vertex array using bound shader
+    glDrawElements(cue_object.draw_mode, cue_object.num_elements, model::INDEX.type, NULL);
 }
 
 void ApplicationSolar::updateView() {
@@ -658,7 +712,43 @@ void ApplicationSolar::initializeGeometry() {
     table_object.num_elements = GLsizei(table_model.indices.size());
     
     
+    //cue----------------------------------------------------
     
+    model cue_model = model_loader::obj(m_resource_path + "models/cue_expo.obj", model::NORMAL);
+    
+    // generate vertex array object
+    glGenVertexArrays(1, &cue_object.vertex_AO);
+    // bind the array for attaching buffers
+    glBindVertexArray(cue_object.vertex_AO);
+    
+    // generate generic buffer
+    glGenBuffers(1, &cue_object.vertex_BO);
+    // bind this as an vertex array buffer containing all attributes
+    glBindBuffer(GL_ARRAY_BUFFER, cue_object.vertex_BO);
+    // configure currently bound array buffer
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * cue_model.data.size(), cue_model.data.data(), GL_STATIC_DRAW);
+    
+    // activate first attribute on gpu
+    glEnableVertexAttribArray(0);
+    // first attribute is 3 floats with no offset & stride
+    glVertexAttribPointer(0, model::POSITION.components, model::POSITION.type, GL_FALSE, cue_model.vertex_bytes, cue_model.offsets[model::POSITION]);
+    // activate second attribute on gpu
+    glEnableVertexAttribArray(1);
+    // second attribute is 3 floats with no offset & stride
+    glVertexAttribPointer(1, model::NORMAL.components, model::NORMAL.type, GL_FALSE, cue_model.vertex_bytes, cue_model.offsets[model::NORMAL]);
+    
+    // generate generic buffer
+    glGenBuffers(1, &cue_object.element_BO);
+    // bind this as an vertex array buffer containing all attributes
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cue_object.element_BO);
+    // configure currently bound array buffer
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, model::INDEX.size * cue_model.indices.size(), cue_model.indices.data(), GL_STATIC_DRAW);
+    
+    // store type of primitive to draw
+    cue_object.draw_mode = GL_TRIANGLES;
+    // transfer number of indices to model object
+    cue_object.num_elements = GLsizei(cue_model.indices.size());
+
 }
 
 ApplicationSolar::~ApplicationSolar() {
@@ -676,6 +766,10 @@ ApplicationSolar::~ApplicationSolar() {
     glDeleteBuffers(1, &table_object.vertex_BO);
     glDeleteBuffers(1, &table_object.element_BO);
     glDeleteVertexArrays(1, &table_object.vertex_AO);
+    
+    glDeleteBuffers(1, &cue_object.vertex_BO);
+    glDeleteBuffers(1, &cue_object.element_BO);
+    glDeleteVertexArrays(1, &cue_object.vertex_AO);
     
     glDeleteBuffers(1, &screenquad_object.vertex_BO);
     glDeleteVertexArrays(1, &screenquad_object.vertex_AO);

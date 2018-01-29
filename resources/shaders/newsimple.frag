@@ -1,6 +1,5 @@
 #version 150
 
-
 in vec3 pass_Normal;
 in vec3 pass_VertexViewPosition;
 in vec3 pass_LightSourceViewPosition;
@@ -29,20 +28,39 @@ vec3 specularColour = vec3(1.0, 1.0, 1.0);
 //sun and black cat: http://www.sunandblackcat.com/tipFullView.php?l=eng&topicid=35
 const int numSamplingPositions = 4;
 // offsets for rectangular PCF sampling
-vec2 kernel[4] = vec2[]
-(
- vec2(1.0, 1.0), vec2(-1.0, 1.0), vec2(-1.0, -1.0), vec2(1.0, -1.0)
- );
+vec2 kernel[4] = vec2[] (vec2(1.0, 1.0), vec2(-1.0, 1.0), vec2(-1.0, -1.0), vec2(1.0, -1.0));
 // performs sampling and accumulates shadowing factor
 void sample(in vec3 coords, in vec2 offset,
             inout float factor, inout float numSamplesUsed)
 {
-    factor += texture(
-                      ShadowMap,
-                      vec3(coords.xy + offset, coords.z)
-                      );
+    factor += texture(ShadowMap, vec3(coords.xy + offset, coords.z));
     numSamplesUsed += 1;
 }
+
+//poisson setup
+// generates pseudorandom number in [0, 1]
+// seed - world space position of a fragemnt
+// freq - modifier for seed. The bigger, the faster
+// the pseudorandom numbers will change with change of world space position
+//float random(in vec3 seed, in float freq)
+//{
+//    // project seed on random constant vector
+//    float dt = dot(floor(seed * freq), vec3(53.1215, 21.1352, 9.1322));
+//    // return only fractional part
+//    return fract(sin(dt) * 2105.2354);
+//}
+// default Poisson disk (offsets)
+//const int numSamplingPositions = 9;
+//uniform vec2 kernel[9] = vec2[] (vec2(0.95581, -0.18159), vec2(0.50147, -0.35807),
+//                                 vec2(0.69607, 0.35559), vec2(-0.0036825, -0.59150),
+//                                 vec2(0.15930, 0.089750), vec2(-0.65031, 0.058189),
+//                                 vec2(0.11915, 0.78449),    vec2(-0.34296, 0.51575),
+//                                 vec2(-0.60380, -0.41527));
+// returns random angle
+//float randomAngle(in vec3 seed, in float freq)
+//{
+//    return random(seed, freq) * 6.283285;
+//}
 
 
 void main() {
@@ -88,6 +106,22 @@ void main() {
                numSamplesUsed
                );
     }
+    
+    //PCF: rotated poisson kernel
+    // generate random rotation angle for each fragment
+//    float angle = randomAngle(vec3(gl_FragCoord), 15);
+//    float s = sin(angle);
+//    float c = cos(angle);
+//    float PCFRadius = 1;
+//    for(int i=4; i < numSamplingPositions; i++)
+//    {
+//        // rotate offset
+//        vec2 rotatedOffset = vec2(kernel[i].x * c + kernel[i].y * s,
+//                                  kernel[i].x * -s + kernel[i].y * c);
+//        sample(vec3(pass_ShadowCoord), rotatedOffset * shadowMapStep * PCFRadius,
+//               shadowFactor, numSamplesUsed);
+//    }
+    
     
     // normalize shadowing factor
     visibility = shadowFactor/numSamplesUsed;

@@ -12,8 +12,8 @@ uniform mat4 ProjectionMatrix;
 uniform mat4 NormalMatrix;
 uniform mat4 DepthBiasMVP;
 uniform mat4 MVP;
-
 uniform vec3 LightPosition;
+
 
 out vec3 pass_Normal;
 out vec3 pass_VertexViewPosition;
