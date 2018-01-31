@@ -4,12 +4,11 @@
 #include "application.hpp"
 #include "model.hpp"
 #include "structs.hpp"
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtx/quaternion.hpp>
-
 
 #define NUM_SPHERES 16
-#define NUM_CUES 16
+#define NUM_CUES 2
+#define NUM_LIGHTS 2
+
 
 // gpu representation of model
 class ApplicationSolar : public Application {
@@ -32,9 +31,10 @@ class ApplicationSolar : public Application {
   void render() const;
 
  protected:
-  void initializeShaderPrograms();
-  void initializeGeometry();
-  void updateView();
+    void initializeShaderPrograms();
+    void initializeGeometry();
+    void initializeLights();
+    void updateView();
 
     // cpu representation of model
     model_object sphere_object;
@@ -45,15 +45,16 @@ class ApplicationSolar : public Application {
     
 private:
     //drawing functions
-    void uploadAllBoxes(bool shadows) const;
-    void uploadBox(box boxToUpload, bool shadows) const;
-    void uploadSpheres(bool shadows) const;
-    void uploadQuad() const;
-    void uploadTable(bool shadows) const;
-    void uploadCues(bool shadows) const;
+    void uploadAllBoxes(bool shadows, int light) const;
+    void uploadBox(box boxToUpload, bool shadows, int light) const;
+    void uploadSpheres(bool shadows, int light) const;
+    void uploadQuad(int mapNum) const;
+    void uploadTable(bool shadows, int light) const;
+    void uploadCues(bool shadows, int light) const;
     //shadow
     void setupShadowBuffer();
     void setupTextures();
+    GLuint loadTexture(std::string filename, GLuint texNum);
 //    void renderShadowBuffer();
     
     //mouse varialbe
@@ -64,33 +65,30 @@ private:
     float slide = 0;
     
     //textures
-    GLuint quadTexture;
     GLuint feltTexture;
     GLuint floorTexture;
     GLuint cueTexture;
+    GLuint quadTexture;
+
     
-    //light
-    glm::fvec3 lightPosition = {0.0, 4.0, -4.0};
-    float visBoxSize = 10;
+    //lights
     
-    //shadow
-    GLuint fbo_handle;
-    GLuint depthTexture;
-    bool showShadowMap = true;
+    light lights[NUM_LIGHTS];
     
+    int showShadowMap = 0;
+    
+    //bias matrix - translate position in space to UV co-ord
     glm::mat4 biasMatrix = {
                          0.5, 0.0, 0.0, 0.0,
                          0.0, 0.5, 0.0, 0.0,
                          0.0, 0.0, 0.5, 0.0,
                          0.5, 0.5, 0.5, 1.0};
     
-    glm::mat4 depthProjectionMatrix;
-    glm::mat4 depthViewMatrix;
     
     //shapes
-    //spheres============================================
+    //sphere setup============================================
     //colour, radius, position
-    //parameters
+    
     double triangleSide = 2.0;
     double sphereSize = 0.25;
     int rows = 5;
@@ -100,16 +98,17 @@ private:
     glm::vec3 black = {0.0, 0.0, 0.0};
     glm::vec3 white = {1.0, 1.0, 1.0};
     
-    //material properties for balls
+    //material properties for pool balls
     glm::fvec4 ball_MTL = {0.3, 0.8, 1.0, 50.0};
     
-    //dependents
+    //position dependents
     double backX = frontX + (triangleSide * 0.866);//sin 60
     double XperRow = (backX - frontX) / (double)(rows-1);
     double leftZ = triangleSide / 2.0;
     double rightZ = -leftZ;
     double Zadjust = triangleSide / (double)(rows-1);
     
+    //pool bool array
     sphere spheres[NUM_SPHERES] = {{yellow, sphereSize, {frontX, sphereSize, 0.0}},//1 row
         {red, sphereSize, {frontX + XperRow, sphereSize, Zadjust/2.0}},// 2 rowL
         {yellow, sphereSize, {frontX + XperRow, sphereSize, -Zadjust/2.0}},// 2 rowR
@@ -161,10 +160,9 @@ private:
     box poolTable = {{0.227, 0.133, 0.074}, {tableScale, tableScale, tableScale}, {-9.0, -7.5, 5.4}};
     glm::fvec4 table_MTL = {0.3, 0.8, 1.0, 50.0};
     
-    //pool cue obj rendering info================================
+    //pool cues obj rendering info================================
     double cueScale = 10.0;
-    glm::fvec3 cueStart = {0.0,1.0,0.0};
-    
+    glm::fvec3 cueStart = {0.0,1.0,0.0}; //original 'direction' taht cue obj points in - straight up
     //cue 1
     glm::fvec3 cueAim = {0.5,-0.01,-0.1};
     box poolCue1 = {{0.980, 0.952, 0.682}, {cueScale, cueScale, cueScale}, {-4.0, 0.35, -4.0}, glm::cross(cueStart, cueAim), acos( dot(cueStart, cueAim) )};
@@ -173,7 +171,6 @@ private:
     box poolCue2 = {{0.980, 0.952, 0.682}, {cueScale, cueScale, cueScale}, {-4.0, -1.2, 6.2}, glm::cross(cueStart, cue2Aim), acos( dot(cueStart, cue2Aim) )};
     glm::fvec4 cue_MTL = {0.3, 0.8, 1.0, 50.0};
     box cues[2] = {poolCue1, poolCue2};
-    
     
     
     //screen quad - shadow monitor

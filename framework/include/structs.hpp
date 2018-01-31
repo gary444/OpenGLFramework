@@ -63,4 +63,14 @@ struct box {
     float rotationAngle;
 };
 
+struct light {
+    
+    glm::fvec3 position;
+    float visBoxSize;
+    GLuint fbo_handle;
+    GLuint depthTexture;
+    glm::mat4 depthProjectionMatrix;
+    glm::mat4 depthViewMatrix;
+};
+
 #endif

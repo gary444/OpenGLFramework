@@ -10,18 +10,17 @@ layout(location = 2) in vec2 in_Texcoord;
 uniform mat4 ModelMatrix;
 uniform mat4 ViewMatrix;
 uniform mat4 ProjectionMatrix;
+//uniform mat4 MVP;
 uniform mat4 NormalMatrix;
-uniform mat4 DepthBiasMVP;
-uniform mat4 MVP;
-uniform vec3 LightPosition;
+uniform mat4 DepthBiasMVP1;
+uniform mat4 DepthBiasMVP2;
 uniform int UseModelUV;
 
 out vec3 pass_Normal;
 out vec3 pass_VertexViewPosition;
-out vec3 pass_LightSourceViewPosition;
-out vec4 pass_ShadowCoord;
+out vec4 pass_ShadowCoord1;
+out vec4 pass_ShadowCoord2;
 out vec2 pass_TexCoord;
-//out float pass_test;
 
 void main(void)
 {
@@ -33,7 +32,6 @@ void main(void)
     
     //for blinnphong shading
     pass_VertexViewPosition = vec3((ViewMatrix * ModelMatrix) * vec4(in_Position, 1.0));
-    pass_LightSourceViewPosition = LightPosition;
     
     //if using model UVs - pass through to frag shader
     if (UseModelUV == 1) {
@@ -44,11 +42,9 @@ void main(void)
         pass_TexCoord = vec2(in_Position.x, in_Position.z);
     }
     
-    //position of vertex in light space
-    pass_ShadowCoord = DepthBiasMVP * vec4(in_Position,1);
-    
-//    pass_test = in_Position.z;
-
+    //position of vertex in light spaces
+    pass_ShadowCoord1 = DepthBiasMVP1 * vec4(in_Position,1);
+    pass_ShadowCoord2 = DepthBiasMVP2 * vec4(in_Position,1);
     
 }
 
