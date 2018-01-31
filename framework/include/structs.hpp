@@ -59,6 +59,8 @@ struct box {
     glm::fvec3 colour;
     glm::fvec3 scaling;
     glm::fvec3 position;
+    glm::fvec3 rotationAxis;
+    float rotationAngle;
 };
 
 #endif

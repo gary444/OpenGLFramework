@@ -4,6 +4,7 @@
 // vertex attributes of VAO
 layout(location = 0) in vec3 in_Position;
 layout(location = 1) in vec3 in_Normal;
+layout(location = 2) in vec2 in_Texcoord;
 
 //Matrix Uniforms as specified with glUniformMatrix4fv
 uniform mat4 ModelMatrix;
@@ -13,7 +14,7 @@ uniform mat4 NormalMatrix;
 uniform mat4 DepthBiasMVP;
 uniform mat4 MVP;
 uniform vec3 LightPosition;
-
+uniform int UseModelUV;
 
 out vec3 pass_Normal;
 out vec3 pass_VertexViewPosition;
@@ -34,8 +35,14 @@ void main(void)
     pass_VertexViewPosition = vec3((ViewMatrix * ModelMatrix) * vec4(in_Position, 1.0));
     pass_LightSourceViewPosition = LightPosition;
     
-    //textures only for boxes - take form co-ords
-    pass_TexCoord = vec2(in_Position.x, in_Position.z);
+    //if using model UVs - pass through to frag shader
+    if (UseModelUV == 1) {
+        pass_TexCoord = in_Texcoord;
+    }
+    else {
+        //textures only for boxes - take form co-ords
+        pass_TexCoord = vec2(in_Position.x, in_Position.z);
+    }
     
     //position of vertex in light space
     pass_ShadowCoord = DepthBiasMVP * vec4(in_Position,1);

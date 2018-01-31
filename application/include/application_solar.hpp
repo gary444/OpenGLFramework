@@ -4,8 +4,12 @@
 #include "application.hpp"
 #include "model.hpp"
 #include "structs.hpp"
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
+
 
 #define NUM_SPHERES 16
+#define NUM_CUES 16
 
 // gpu representation of model
 class ApplicationSolar : public Application {
@@ -63,6 +67,7 @@ private:
     GLuint quadTexture;
     GLuint feltTexture;
     GLuint floorTexture;
+    GLuint cueTexture;
     
     //light
     glm::fvec3 lightPosition = {0.0, 4.0, -4.0};
@@ -123,8 +128,8 @@ private:
         {white, sphereSize, {-backX*1.1, sphereSize, Zadjust}}};//CUE ball
     
     
-    //boxes============================================
-    //colour, scaling, position
+    //'boxes'============================================
+    //colour, scaling, position, (rotationaxis, rotation angle)
     
     //chalk cube
     double cubeSize = 0.3;
@@ -157,9 +162,17 @@ private:
     glm::fvec4 table_MTL = {0.3, 0.8, 1.0, 50.0};
     
     //pool cue obj rendering info================================
-    double cueScale = 100.0;
-    box poolCues = {{0.227, 0.133, 0.074}, {tableScale, tableScale, tableScale}, {0.0, 7.5, 0.0}};
+    double cueScale = 10.0;
+    glm::fvec3 cueStart = {0.0,1.0,0.0};
     
+    //cue 1
+    glm::fvec3 cueAim = {0.5,-0.01,-0.1};
+    box poolCue1 = {{0.980, 0.952, 0.682}, {cueScale, cueScale, cueScale}, {-4.0, 0.35, -4.0}, glm::cross(cueStart, cueAim), acos( dot(cueStart, cueAim) )};
+    //cue 2
+    glm::fvec3 cue2Aim = {0.0,0.95,-0.1};
+    box poolCue2 = {{0.980, 0.952, 0.682}, {cueScale, cueScale, cueScale}, {-4.0, -1.2, 6.2}, glm::cross(cueStart, cue2Aim), acos( dot(cueStart, cue2Aim) )};
+    glm::fvec4 cue_MTL = {0.3, 0.8, 1.0, 50.0};
+    box cues[2] = {poolCue1, poolCue2};
     
     
     

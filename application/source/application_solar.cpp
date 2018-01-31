@@ -114,6 +114,20 @@ void ApplicationSolar::setupTextures(){
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, newTexture.width, newTexture.height, 0, newTexture.channels, newTexture.channel_type, newTexture.ptr());
     
     
+    //cue texture --------------------------------------------
+    newTexture = texture_loader::file(m_resource_path + "textures/cue.png");
+    floorTexture = 2;
+    glActiveTexture(GL_TEXTURE4);
+    //generate texture object
+    glGenTextures(1, &cueTexture);
+    //bind texture to 2D texture binding point of active unit
+    glBindTexture(GL_TEXTURE_2D, cueTexture);
+    //define sampling parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, newTexture.width, newTexture.height, 0, newTexture.channels, newTexture.channel_type, newTexture.ptr());
+    
+    
     //test texture --------------------------------------------
     
     newTexture = texture_loader::file(m_resource_path + "textures/goat.png");
@@ -202,6 +216,10 @@ void ApplicationSolar::uploadAllBoxes(bool shadows) const{
     if (!shadows) {
         //upload material properties of block plane
         glUniform4fv(m_shaders.at("sphere").u_locs.at("MaterialProperties"), 1, glm::value_ptr(block_MTL));
+        
+        //disable use of model coords
+        glUniform1i(m_shaders.at("sphere").u_locs.at("UseModelUV"),0);
+
     }
     uploadBox(blockPlane, shadows);
    
@@ -412,54 +430,70 @@ void ApplicationSolar::uploadTable(bool shadows) const{
 
 void ApplicationSolar::uploadCues(bool shadows) const{
     
+
     
-    //    glm::fmat4 model_matrix;
-    glm::fmat4 model_matrix = glm::translate(glm::fmat4{}, poolCues.position);
-    model_matrix = glm::scale(model_matrix, glm::fvec3{poolCues.scaling});
-    
-    //compute transformation to position from light's POV
-    glm::mat4 depthMVP = depthProjectionMatrix * depthViewMatrix * model_matrix;
-    glm::mat4 depthBiasMVP = biasMatrix * depthMVP;
-    
-    //if shadow map rendering pass...
-    if (shadows) {
+    for (int i = 0; i < NUM_CUES; i++) {
         
-        //upload depth mvp to depth shader
-        glUniformMatrix4fv(m_shaders.at("depth").u_locs.at("DepthMVP"),
-                           1, GL_FALSE, &depthMVP[0][0]);
+        glm::fmat4 model_matrix = glm::translate(glm::fmat4{}, cues[i].position);
+        model_matrix = glm::rotate(model_matrix, cues[i].rotationAngle, cues[i].rotationAxis);
+        model_matrix = glm::scale(model_matrix, glm::fvec3{cues[i].scaling});
+        
+        //compute transformation to position from light's POV
+        glm::mat4 depthMVP = depthProjectionMatrix * depthViewMatrix * model_matrix;
+        glm::mat4 depthBiasMVP = biasMatrix * depthMVP;
+        
+        //if shadow map rendering pass...
+        if (shadows) {
+            
+            //upload depth mvp to depth shader
+            glUniformMatrix4fv(m_shaders.at("depth").u_locs.at("DepthMVP"),
+                               1, GL_FALSE, &depthMVP[0][0]);
+        }
+        else {
+            
+            //activate cue texture
+            glActiveTexture(GL_TEXTURE4);
+            glBindTexture(GL_TEXTURE_2D, cueTexture);
+            glUniform1i(m_shaders.at("sphere").u_locs.at("ColourTex"), 4);
+            //enable textures
+            glUniform1i(m_shaders.at("sphere").u_locs.at("useTexture"),1);
+            //enable use of model coords
+            glUniform1i(m_shaders.at("sphere").u_locs.at("UseModelUV"),1);
+
+            
+            //upload depth MVP with bias to main shader
+            glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("DepthBiasMVP"), 1, GL_FALSE, &depthBiasMVP[0][0]);
+            
+            //upload model matrix to main shader
+            glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("ModelMatrix"),
+                               1, GL_FALSE, glm::value_ptr(model_matrix));
+            
+            // extra matrix for normal transformation to keep them orthogonal to surface
+            glm::fmat4 normal_matrix = glm::inverseTranspose(glm::inverse(m_view_transform) * model_matrix);
+            glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("NormalMatrix"),
+                               1, GL_FALSE, glm::value_ptr(normal_matrix));
+            
+            //upload base colour
+            glUniform3fv(m_shaders.at("sphere").u_locs.at("DiffuseColour"), 1, glm::value_ptr(cues[i].colour));
+            
+            //upload light position for blinn-phong shading
+            glm::fmat4 view_matrix = glm::inverse(m_view_transform);
+            glm::vec3 lightPos(view_matrix * glm::vec4{lightPosition, 1.0});
+            glUniform3fv(m_shaders.at("sphere").u_locs.at("LightPosition"), 1, glm::value_ptr(lightPos));
+            
+            //upload material properties
+            glUniform4fv(m_shaders.at("sphere").u_locs.at("MaterialProperties"), 1, glm::value_ptr(table_MTL));
+            
+        }
+        
+        // bind the VAO to draw
+        glBindVertexArray(cue_object.vertex_AO);
+        
+        // draw bound vertex array using bound shader
+        glDrawElements(cue_object.draw_mode, cue_object.num_elements, model::INDEX.type, NULL);
     }
-    else {
-        
-        //upload depth MVP with bias to main shader
-        glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("DepthBiasMVP"), 1, GL_FALSE, &depthBiasMVP[0][0]);
-        
-        //upload model matrix to main shader
-        glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("ModelMatrix"),
-                           1, GL_FALSE, glm::value_ptr(model_matrix));
-        
-        // extra matrix for normal transformation to keep them orthogonal to surface
-        glm::fmat4 normal_matrix = glm::inverseTranspose(glm::inverse(m_view_transform) * model_matrix);
-        glUniformMatrix4fv(m_shaders.at("sphere").u_locs.at("NormalMatrix"),
-                           1, GL_FALSE, glm::value_ptr(normal_matrix));
-        
-        //upload base colour
-        glUniform3fv(m_shaders.at("sphere").u_locs.at("DiffuseColour"), 1, glm::value_ptr(poolCues.colour));
-        
-        //upload light position for blinn-phong shading
-        glm::fmat4 view_matrix = glm::inverse(m_view_transform);
-        glm::vec3 lightPos(view_matrix * glm::vec4{lightPosition, 1.0});
-        glUniform3fv(m_shaders.at("sphere").u_locs.at("LightPosition"), 1, glm::value_ptr(lightPos));
-        
-        //upload material properties
-        glUniform4fv(m_shaders.at("sphere").u_locs.at("MaterialProperties"), 1, glm::value_ptr(table_MTL));
-        
-    }
     
-    // bind the VAO to draw
-    glBindVertexArray(cue_object.vertex_AO);
-    
-    // draw bound vertex array using bound shader
-    glDrawElements(cue_object.draw_mode, cue_object.num_elements, model::INDEX.type, NULL);
+
 }
 
 void ApplicationSolar::updateView() {
@@ -554,6 +588,7 @@ void ApplicationSolar::initializeShaderPrograms() {
     m_shaders.at("sphere").u_locs["MaterialProperties"] = -1;
     m_shaders.at("sphere").u_locs["useTexture"] = -1;
     m_shaders.at("sphere").u_locs["ColourTex"] = -1;
+    m_shaders.at("sphere").u_locs["UseModelUV"] = -1;
     
     m_shaders.emplace("depth", shader_program{m_resource_path + "shaders/depth.vert",
         m_resource_path + "shaders/depth.frag"});
@@ -714,7 +749,7 @@ void ApplicationSolar::initializeGeometry() {
     
     //cue----------------------------------------------------
     
-    model cue_model = model_loader::obj(m_resource_path + "models/cue_expo.obj", model::NORMAL);
+    model cue_model = model_loader::obj(m_resource_path + "models/Cue.obj", model::NORMAL | model::TEXCOORD);
     
     // generate vertex array object
     glGenVertexArrays(1, &cue_object.vertex_AO);
@@ -736,6 +771,11 @@ void ApplicationSolar::initializeGeometry() {
     glEnableVertexAttribArray(1);
     // second attribute is 3 floats with no offset & stride
     glVertexAttribPointer(1, model::NORMAL.components, model::NORMAL.type, GL_FALSE, cue_model.vertex_bytes, cue_model.offsets[model::NORMAL]);
+    
+    // activate third attribute on gpu
+    glEnableVertexAttribArray(2);
+    // second attribute is 3 floats with no offset & stride
+    glVertexAttribPointer(2, model::TEXCOORD.components, model::TEXCOORD.type, GL_FALSE, cue_model.vertex_bytes, cue_model.offsets[model::TEXCOORD]);
     
     // generate generic buffer
     glGenBuffers(1, &cue_object.element_BO);
