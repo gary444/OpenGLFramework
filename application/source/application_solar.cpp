@@ -594,14 +594,14 @@ void ApplicationSolar::initializeLights(){
     
     
     //light 0
-    lights[0].position = {-4.0, 3.0, 0.0};
-    lights[0].visBoxSize = 10.0;
+    lights[0].position = {2.0, 2.0, 2.0};
+    lights[0].visBoxSize = 12.0;
     lights[0].depthProjectionMatrix = glm::ortho<float>(-lights[0].visBoxSize,lights[0].visBoxSize,-lights[0].visBoxSize,lights[0].visBoxSize,-lights[0].visBoxSize,lights[0].visBoxSize);
     lights[0].depthViewMatrix = glm::lookAt(lights[0].position, glm::vec3(0,0,0), glm::vec3(0,1,0));
     
     //light 1
-    lights[1].position = {4.0, 3.0, 0.0};
-    lights[1].visBoxSize = 10.0;
+    lights[1].position = {-2.0, 3.0, -1.5};
+    lights[1].visBoxSize = 12.0;
     lights[1].depthProjectionMatrix = glm::ortho<float>(-lights[1].visBoxSize,lights[1].visBoxSize,-lights[1].visBoxSize,lights[1].visBoxSize,-lights[1].visBoxSize,lights[1].visBoxSize);
     lights[1].depthViewMatrix = glm::lookAt(lights[1].position, glm::vec3(0,0,0), glm::vec3(0,1,0));
     

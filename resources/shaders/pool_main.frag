@@ -2,7 +2,6 @@
 
 in vec3 pass_Normal;
 in vec3 pass_VertexViewPosition;
-//in vec3 pass_LightSourceViewPosition;
 in vec4 pass_ShadowCoord1;
 in vec4 pass_ShadowCoord2;
 in vec2 pass_TexCoord;
@@ -39,8 +38,9 @@ void sample(in vec3 coords, in vec2 offset,
     factor += texture(shadowMap, vec3(coords.xy + offset, coords.z));
     numSamplesUsed += 1;
 }
-float light1factor = 1.0;
-float light2factor = 1.0;
+//light intensity factors
+float light1factor = 0.6;
+float light2factor = 0.2;
 
 
 //blinn phong illumination function ------------------------------------------
@@ -110,7 +110,7 @@ void main() {
                );
     }
     // normalize shadowing factor
-    light1factor = shadowFactor/numSamplesUsed;
+    visibility = (shadowFactor/numSamplesUsed) + (1.0-light1factor);
     
     //light2
     shadowFactor = 0.0;
@@ -124,20 +124,22 @@ void main() {
                ShadowMap2
                );
     }
-    // normalize shadowing factor
-    light2factor = shadowFactor/numSamplesUsed;
-    
-    //combine shadows here?
-    visibility = light1factor * light2factor;
+    // normalize shadowing factor, add to current shadow
+    visibility = (shadowFactor/numSamplesUsed + (1.0-light2factor)) * visibility;
+
 
     //end shadow sampling========================================
     
-    
+    //lighting calculations for each light
     vec3 light1illumination = calcLighting(baseColor, pass_Normal, LightPosition1, pass_VertexViewPosition, visibility);
     
     vec3 light2illumination = calcLighting(baseColor, pass_Normal, LightPosition2, pass_VertexViewPosition, visibility);
     
-    out_Color = vec4(light1illumination + light2illumination, 1.0);
+    
+    //sum and weight light outputs
+    out_Color = vec4(
+                     (light1factor * light1illumination) +
+                     (light2factor * light2illumination), 1.0);
 
     
 }
