@@ -8,6 +8,7 @@
 #define NUM_SPHERES 16
 #define NUM_CUES 2
 #define NUM_LIGHTS 2
+#define SHADOW_BUFFER_SIZE 1024
 
 
 // gpu representation of model
@@ -55,7 +56,7 @@ private:
     void setupShadowBuffer();
     void setupTextures();
     GLuint loadTexture(std::string filename, GLuint texNum);
-//    void renderShadowBuffer();
+
     
     //mouse varialbe
     bool mouseActive = true;
@@ -75,6 +76,7 @@ private:
     
     light lights[NUM_LIGHTS];
     
+    //determines which shadow map is shown
     int showShadowMap = 0;
     
     //bias matrix - translate position in space to UV co-ord
@@ -85,7 +87,6 @@ private:
                          0.5, 0.5, 0.5, 1.0};
     
     
-    //shapes
     //sphere setup============================================
     //colour, radius, position
     
@@ -97,7 +98,6 @@ private:
     glm::vec3 red = {1.0, 0.0, 0.0};
     glm::vec3 black = {0.0, 0.0, 0.0};
     glm::vec3 white = {1.0, 1.0, 1.0};
-    
     //material properties for pool balls
     glm::fvec4 ball_MTL = {0.3, 0.8, 1.0, 50.0};
     

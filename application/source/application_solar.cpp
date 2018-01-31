@@ -24,6 +24,7 @@ ApplicationSolar::ApplicationSolar(std::string const& resource_path)
  :Application{resource_path}
 ,sphere_object{}, box_object{}, screenquad_object{}, table_object{}, cue_object{}
 {
+    
   initializeGeometry();
   initializeShaderPrograms();
     initializeLights();
@@ -41,6 +42,7 @@ ApplicationSolar::ApplicationSolar(std::string const& resource_path)
 
 
 }
+
 
 void ApplicationSolar::setupShadowBuffer(){
     
@@ -60,7 +62,7 @@ void ApplicationSolar::setupShadowBuffer(){
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         
-        glTexImage2D(GL_TEXTURE_2D, 0,GL_DEPTH_COMPONENT24, 1024, 1024, 0,GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+        glTexImage2D(GL_TEXTURE_2D, 0,GL_DEPTH_COMPONENT24, SHADOW_BUFFER_SIZE, SHADOW_BUFFER_SIZE, 0,GL_DEPTH_COMPONENT, GL_FLOAT, 0);
         
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
@@ -105,33 +107,27 @@ GLuint ApplicationSolar::loadTexture(std::string filename, GLuint texNum)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, newTexture.width, newTexture.height, 0, newTexture.channels, newTexture.channel_type, newTexture.ptr());
     
     return handle;
-    
 }
-
-
-
 
 void ApplicationSolar::render() const {
     
-    
-    
-    
+    //grey BG
     glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
     
-    //shadow passes:
+    
     glEnable(GL_CULL_FACE);
     glCullFace(GL_FRONT);
     
+    //shadow passes - change viewport to fit shadow buffer size
+    glViewport(0,0,SHADOW_BUFFER_SIZE,SHADOW_BUFFER_SIZE);
     //1st pass - shadow from light 0 ====================================
-    glViewport(0,0,1024,1024);
     glBindFramebuffer(GL_FRAMEBUFFER, lights[0].fbo_handle);
-//    glEnable(GL_CULL_FACE);
-//    glCullFace(GL_FRONT);
 
     // Clear the screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glColorMask ( GL_FALSE , GL_FALSE , GL_FALSE , GL_FALSE );
+    glColorMask ( GL_FALSE , GL_FALSE , GL_FALSE , GL_FALSE ); // no col needed
     glUseProgram(m_shaders.at("depth").handle);
+    //upload shapes
     uploadTable(true, 0);
     uploadAllBoxes(true, 0);
     uploadSpheres(true, 0);
@@ -140,13 +136,12 @@ void ApplicationSolar::render() const {
     
     //2nd pass - shadow from light 1 ====================================
     glBindFramebuffer(GL_FRAMEBUFFER, lights[1].fbo_handle);
-//    glEnable(GL_CULL_FACE);
-//    glCullFace(GL_FRONT);
     
     // Clear the screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glColorMask ( GL_FALSE , GL_FALSE , GL_FALSE , GL_FALSE );
     glUseProgram(m_shaders.at("depth").handle);
+    //upload shapes
     uploadTable(true, 1);
     uploadAllBoxes(true, 1);
     uploadSpheres(true, 1);
@@ -156,26 +151,20 @@ void ApplicationSolar::render() const {
     
     //3rd pass - render scene ========================================
     glViewport(0,0,1280,800);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);//default FB
     
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     // Clear the screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
-    glUseProgram(m_shaders.at("main").handle);
-    //disable textures
-    glUniform1i(m_shaders.at("main").u_locs.at("useTexture"),0);
+    glUseProgram(m_shaders.at("main").handle);//use main shader program
     
-    //set shadow map as texture
-//    glActiveTexture(GL_TEXTURE0);
-//    glBindTexture(GL_TEXTURE_2D, lights[0].depthTexture);
+    //set shadow maps as textures
     glUniform1i(m_shaders.at("main").u_locs.at("ShadowMap1"), 0);
-//    glActiveTexture(GL_TEXTURE1);
-//    glBindTexture(GL_TEXTURE_2D, lights[1].depthTexture);
     glUniform1i(m_shaders.at("main").u_locs.at("ShadowMap2"), 1);
     glUniform1i(m_shaders.at("main").u_locs.at("ColourTex"), 2);
-    
+    //upload shapes
     uploadTable(false, -1);
     uploadAllBoxes(false, -1);
     uploadSpheres(false, -1);
@@ -187,13 +176,9 @@ void ApplicationSolar::render() const {
         uploadQuad(showShadowMap);
     }
     
-    
-    
 }
 
-
 void ApplicationSolar::uploadAllBoxes(bool shadows, int light) const{
-    
     
     uploadBox(chalkCube, shadows, light);
 
@@ -263,7 +248,6 @@ void ApplicationSolar::uploadBox(box boxToUpload, bool shadows, int light) const
         }
     }
     else {
-        
         
         //upload depth MVP with bias to main shader
         glUniformMatrix4fv(m_shaders.at("main").u_locs.at("DepthBiasMVP1"), 1, GL_FALSE, &depthBiasMVP1[0][0]);
@@ -375,7 +359,6 @@ void ApplicationSolar::uploadQuad(int mapNum) const{
 
 void ApplicationSolar::uploadTable(bool shadows, int light) const{
     
-//    glm::fmat4 model_matrix;
     glm::fmat4 model_matrix = glm::translate(glm::fmat4{}, poolTable.position);
     model_matrix = glm::scale(model_matrix, glm::fvec3{poolTable.scaling});
     
@@ -425,6 +408,10 @@ void ApplicationSolar::uploadTable(bool shadows, int light) const{
         
         //upload material properties of balls
         glUniform4fv(m_shaders.at("main").u_locs.at("MaterialProperties"), 1, glm::value_ptr(table_MTL));
+        
+        //dont use a texture
+        glUniform1i(m_shaders.at("main").u_locs.at("useTexture"),0);
+
         
     }
     
@@ -549,6 +536,7 @@ void ApplicationSolar::keyCallback(int key, int scancode, int action, int mods) 
   
     float speed = 0.5;
     
+    //zoom in
     if (key == GLFW_KEY_W && action != GLFW_RELEASE) {
         zoom -= speed;
         updateView();
@@ -710,10 +698,6 @@ void ApplicationSolar::initializeGeometry() {
     // first attribute is 3 floats with no offset & stride
     glVertexAttribPointer(1, model::NORMAL.components, model::NORMAL.type, GL_FALSE, cube_model.vertex_bytes, cube_model.offsets[model::NORMAL]);
     
-//    glEnableVertexAttribArray(2);
-//    // first attribute is 3 floats with no offset & stride
-//    glVertexAttribPointer(2, model::TEXCOORD.components, model::TEXCOORD.type, GL_FALSE, cube_model.vertex_bytes, cube_model.offsets[model::TEXCOORD]);
-    
     // generate generic buffer
     glGenBuffers(1, &box_object.element_BO);
     // bind this as an vertex array buffer containing all attributes
@@ -835,6 +819,7 @@ void ApplicationSolar::initializeGeometry() {
 
 }
 
+//cleanup
 ApplicationSolar::~ApplicationSolar() {
     
     glDeleteBuffers(1, &box_object.vertex_BO);

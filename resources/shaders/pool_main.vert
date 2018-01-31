@@ -10,7 +10,6 @@ layout(location = 2) in vec2 in_Texcoord;
 uniform mat4 ModelMatrix;
 uniform mat4 ViewMatrix;
 uniform mat4 ProjectionMatrix;
-//uniform mat4 MVP;
 uniform mat4 NormalMatrix;
 uniform mat4 DepthBiasMVP1;
 uniform mat4 DepthBiasMVP2;
